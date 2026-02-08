@@ -37,6 +37,10 @@ const statusLabels: Record<string, string> = {
   NEEDS_CORRECTION: "Needs Correction",
 }
 
+const getWeekLabel = (weekNumber: number) => {
+  return weekNumber === 0 ? "Pre-Clarity Week" : `Week ${weekNumber}`
+}
+
 export default function StudentDashboard() {
   const { data: session } = useSession()
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -117,7 +121,7 @@ export default function StudentDashboard() {
                       {submission.workbookTitle}
                     </CardTitle>
                     <CardDescription>
-                      Week {submission.weekNumber} • Coach: {submission.coach.name}
+                      {getWeekLabel(submission.weekNumber)} • Coach: {submission.coach.name}
                     </CardDescription>
                   </div>
                   <Badge className={statusColors[submission.status]}>

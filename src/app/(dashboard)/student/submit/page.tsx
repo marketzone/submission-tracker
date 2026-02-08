@@ -117,6 +117,7 @@ export default function SubmitWorkbookPage() {
                   <SelectValue placeholder="Select week" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="0">Pre-Clarity Week</SelectItem>
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((week) => (
                     <SelectItem key={week} value={week.toString()}>
                       Week {week}

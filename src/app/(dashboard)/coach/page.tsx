@@ -37,6 +37,10 @@ const statusLabels: Record<string, string> = {
   NEEDS_CORRECTION: "Needs Correction",
 }
 
+const getWeekLabel = (weekNumber: number) => {
+  return weekNumber === 0 ? "Pre-Clarity Week" : `Week ${weekNumber}`
+}
+
 export default function CoachDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([])
@@ -170,6 +174,7 @@ export default function CoachDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Weeks</SelectItem>
+                <SelectItem value="0">Pre-Clarity Week</SelectItem>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((week) => (
                   <SelectItem key={week} value={week.toString()}>
                     Week {week}
@@ -202,7 +207,7 @@ export default function CoachDashboard() {
                       {submission.workbookTitle}
                     </CardTitle>
                     <CardDescription>
-                      Student: {submission.student.name} • Week {submission.weekNumber}
+                      Student: {submission.student.name} • {getWeekLabel(submission.weekNumber)}
                     </CardDescription>
                   </div>
                   <Badge className={statusColors[submission.status]}>

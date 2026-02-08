@@ -255,6 +255,10 @@ export default function ProgramManagerPage() {
     return classNames[studentClass] || studentClass
   }
 
+  const getWeekLabel = (weekNumber: number) => {
+    return weekNumber === 0 ? "Pre-Clarity Week" : `Week ${weekNumber}`
+  }
+
   // Filter submissions
   const filteredSubmissions = submissions.filter((submission) => {
     if (statusFilter !== "all" && submission.status !== statusFilter) {
@@ -345,6 +349,7 @@ export default function ProgramManagerPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Weeks</SelectItem>
+                    <SelectItem value="0">Pre-Clarity Week</SelectItem>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((week) => (
                       <SelectItem key={week} value={week.toString()}>
                         Week {week}
@@ -379,7 +384,7 @@ export default function ProgramManagerPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">
-                          {submission.workbookTitle} - Week {submission.weekNumber}
+                          {submission.workbookTitle} - {getWeekLabel(submission.weekNumber)}
                         </CardTitle>
                         <CardDescription>
                           Student: {submission.student.name} ({submission.student.email})
