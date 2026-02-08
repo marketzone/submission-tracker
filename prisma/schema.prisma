@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  name             String
+  password         String        // hashed
+  role             UserRole      @default(STUDENT)
+  active           Boolean       @default(true) // For students: can be deactivated
+  approved         Boolean       @default(false) // For approval workflow
+  studentClass     StudentClass? // For students: assigned class
+  resetToken       String?       // For password reset
+  resetTokenExpiry DateTime?     // Token expiration time
+  coachId          String?       // For students: their assigned coach
+  coach            User?         @relation("CoachStudents", fields: [coachId], references: [id])
+  students         User[]        @relation("CoachStudents")
+  submissions      Submission[]  @relation("StudentSubmissions")
+  coachReviews     Submission[]  @relation("CoachReviews")
+  headCoachReviews Submission[]  @relation("HeadCoachReviews")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+enum UserRole {
+  STUDENT
+  COACH
+  HEAD_COACH
+  PROGRAM_MANAGER
+}
+
+enum StudentClass {
+  PRE_CLARITY
+  STRATEGY_CLASS
+  FUNNEL_CLASS
+  LAUNCH_CLASS
+}
+
+model Submission {
+  id                String           @id @default(cuid())
+  studentId         String
+  student           User             @relation("StudentSubmissions", fields: [studentId], references: [id])
+  workbookTitle     String
+  workbookUrl       String
+  weekNumber        Int              // 1-8
+  coachId           String
+  coach             User             @relation("CoachReviews", fields: [coachId], references: [id])
+  status            SubmissionStatus @default(PENDING)
+  coachFeedback     String?
+  headCoachId       String?
+  headCoach         User?            @relation("HeadCoachReviews", fields: [headCoachId], references: [id])
+  headCoachFeedback String?
+  submittedAt       DateTime         @default(now())
+  reviewedAt        DateTime?
+  headReviewedAt    DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([studentId])
+  @@index([coachId])
+  @@index([status])
+}
+
+enum SubmissionStatus {
+  PENDING           // Initial submission
+  COACH_REVIEW      // Coach is reviewing
+  HEAD_COACH_REVIEW // Approved by coach, awaiting head coach
+  APPROVED          // Final approval
+  NEEDS_CORRECTION  // Coach or head coach requested changes
+}

@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "UserRole" ADD VALUE 'PROGRAM_MANAGER';
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "active" BOOLEAN NOT NULL DEFAULT true;
