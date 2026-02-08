@@ -109,8 +109,8 @@ export async function POST(request: Request) {
     const { workbookTitle, workbookUrl, weekNumber, coachId } =
       await request.json()
 
-    // Validate required fields
-    if (!workbookTitle || !workbookUrl || !weekNumber || !coachId) {
+    // Validate required fields (weekNumber can be 0 for Pre-Clarity Week)
+    if (!workbookTitle || !workbookUrl || typeof weekNumber !== 'number' || !coachId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
