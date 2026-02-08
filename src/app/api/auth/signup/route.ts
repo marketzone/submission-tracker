@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await hash(password, 12)
 
-    // Create user
+    // Create user - auto-approve head coaches since they're top-level admins
     const user = await prisma.user.create({
       data: {
         name,
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         password: hashedPassword,
         role,
         coachId: role === "STUDENT" ? coachId : null,
+        approved: role === "HEAD_COACH" ? true : false,
       },
     })
 
