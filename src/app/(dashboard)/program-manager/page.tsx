@@ -520,16 +520,16 @@ export default function ProgramManagerPage() {
                           Assigned Class
                         </label>
                         <Select
-                          value={student.studentClass || ""}
+                          value={student.studentClass || "NONE"}
                           onValueChange={(value) =>
-                            updateStudentClass(student.id, value || null)
+                            updateStudentClass(student.id, value === "NONE" ? null : value)
                           }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select a class" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No Class</SelectItem>
+                            <SelectItem value="NONE">No Class</SelectItem>
                             <SelectItem value="PRE_CLARITY">Pre-Clarity</SelectItem>
                             <SelectItem value="STRATEGY_CLASS">Strategy Class</SelectItem>
                             <SelectItem value="FUNNEL_CLASS">Funnel Class</SelectItem>
