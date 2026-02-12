@@ -29,8 +29,10 @@ export async function GET() {
         active: true,
         approved: true,
         studentClass: true,
+        coachId: true,
         coach: {
           select: {
+            id: true,
             name: true,
           },
         },

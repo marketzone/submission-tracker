@@ -43,7 +43,9 @@ interface Student {
   email: string
   active: boolean
   studentClass?: string | null
+  coachId?: string | null
   coach?: {
+    id: string
     name: string
   }
 }
@@ -59,14 +61,22 @@ interface PendingStudent {
   }
 }
 
+interface Coach {
+  id: string
+  name: string
+  email: string
+}
+
 export default function ProgramManagerPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [students, setStudents] = useState<Student[]>([])
   const [pendingStudents, setPendingStudents] = useState<PendingStudent[]>([])
+  const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"submissions" | "students" | "pending">("submissions")
+  const [activeTab, setActiveTab] = useState<"submissions" | "students" | "pending" | "coaches">("submissions")
   const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({})
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
+  const [expandedCoach, setExpandedCoach] = useState<string | null>(null)
 
   // Filters for submissions
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -96,6 +106,11 @@ export default function ProgramManagerPage() {
       const pendingRes = await fetch("/api/users/pending")
       const pendingData = await pendingRes.json()
       setPendingStudents(pendingData.users || [])
+
+      // Fetch all coaches
+      const coachesRes = await fetch("/api/users/coaches")
+      const coachesData = await coachesRes.json()
+      setCoaches(coachesData.coaches || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -210,6 +225,27 @@ export default function ProgramManagerPage() {
     }
   }
 
+  const updateStudentCoach = async (studentId: string, newCoachId: string | null) => {
+    try {
+      const res = await fetch(`/api/users/${studentId}/update-coach`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachId: newCoachId }),
+      })
+
+      if (res.ok) {
+        alert("Student coach updated successfully!")
+        fetchData()
+      } else {
+        const data = await res.json()
+        alert(`Failed to update coach: ${data.error || "Unknown error"}`)
+      }
+    } catch (error) {
+      console.error("Error updating student coach:", error)
+      alert("An error occurred")
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -313,6 +349,12 @@ export default function ProgramManagerPage() {
               {pendingStudents.length}
             </Badge>
           )}
+        </Button>
+        <Button
+          variant={activeTab === "coaches" ? "default" : "outline"}
+          onClick={() => setActiveTab("coaches")}
+        >
+          Coach Dashboards
         </Button>
       </div>
 
@@ -519,36 +561,61 @@ export default function ProgramManagerPage() {
                         {student.active ? "Active" : "Deactivated"}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <label className="text-sm font-medium mb-2 block">
-                          Assigned Class
-                        </label>
-                        <Select
-                          value={student.studentClass || "NONE"}
-                          onValueChange={(value) =>
-                            updateStudentClass(student.id, value === "NONE" ? null : value)
-                          }
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <label className="text-sm font-medium mb-2 block">
+                            Assigned Class
+                          </label>
+                          <Select
+                            value={student.studentClass || "NONE"}
+                            onValueChange={(value) =>
+                              updateStudentClass(student.id, value === "NONE" ? null : value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a class" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NONE">No Class</SelectItem>
+                              <SelectItem value="PRE_CLARITY">Pre-Clarity</SelectItem>
+                              <SelectItem value="STRATEGY_CLASS">Strategy Class</SelectItem>
+                              <SelectItem value="FUNNEL_CLASS">Funnel Class</SelectItem>
+                              <SelectItem value="LAUNCH_CLASS">Launch Class</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-sm font-medium mb-2 block">
+                            Assigned Coach
+                          </label>
+                          <Select
+                            value={student.coachId || "NONE"}
+                            onValueChange={(value) =>
+                              updateStudentCoach(student.id, value === "NONE" ? null : value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a coach" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NONE">No Coach</SelectItem>
+                              {coaches.map((coach) => (
+                                <SelectItem key={coach.id} value={coach.id}>
+                                  {coach.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          variant={student.active ? "destructive" : "default"}
+                          onClick={() => toggleStudentActive(student.id, student.active)}
+                          className="mt-6"
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NONE">No Class</SelectItem>
-                            <SelectItem value="PRE_CLARITY">Pre-Clarity</SelectItem>
-                            <SelectItem value="STRATEGY_CLASS">Strategy Class</SelectItem>
-                            <SelectItem value="FUNNEL_CLASS">Funnel Class</SelectItem>
-                            <SelectItem value="LAUNCH_CLASS">Launch Class</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          {student.active ? "Deactivate" : "Reactivate"}
+                        </Button>
                       </div>
-                      <Button
-                        variant={student.active ? "destructive" : "default"}
-                        onClick={() => toggleStudentActive(student.id, student.active)}
-                        className="mt-6"
-                      >
-                        {student.active ? "Deactivate" : "Reactivate"}
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -639,6 +706,111 @@ export default function ProgramManagerPage() {
                   </CardContent>
                 </Card>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Coaches Tab */}
+      {activeTab === "coaches" && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4">
+            Coach Dashboards ({coaches.length})
+          </h2>
+          <p className="text-gray-600 mb-4">
+            View each coach's submissions and monitor their review status
+          </p>
+
+          <div className="space-y-4">
+            {coaches.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-500">No coaches found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              coaches.map((coach) => {
+                const coachSubmissions = submissions.filter(
+                  (s) => s.coach.name === coach.name
+                )
+                const pendingCount = coachSubmissions.filter(
+                  (s) => s.status === "PENDING" || s.status === "COACH_REVIEW"
+                ).length
+
+                return (
+                  <Card key={coach.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-lg">{coach.name}</CardTitle>
+                          <CardDescription>{coach.email}</CardDescription>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {coachSubmissions.length} Total
+                          </Badge>
+                          {pendingCount > 0 && (
+                            <Badge className="bg-yellow-100 text-yellow-800">
+                              {pendingCount} Pending
+                            </Badge>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setExpandedCoach(expandedCoach === coach.id ? null : coach.id)
+                            }
+                          >
+                            {expandedCoach === coach.id ? "Hide" : "View"} Submissions
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    {expandedCoach === coach.id && (
+                      <CardContent>
+                        {coachSubmissions.length === 0 ? (
+                          <p className="text-gray-500 text-sm">No submissions yet</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {coachSubmissions.map((submission) => (
+                              <div
+                                key={submission.id}
+                                className="border rounded-lg p-3 bg-gray-50"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">
+                                      {submission.workbookTitle}
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Student: {submission.student.name} •{" "}
+                                      {getWeekLabel(submission.weekNumber)}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Submitted:{" "}
+                                      {new Date(submission.submittedAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <Badge className={getStatusColor(submission.status)}>
+                                    {getStatusLabel(submission.status)}
+                                  </Badge>
+                                </div>
+                                {submission.coachFeedback && (
+                                  <div className="mt-2 text-xs bg-white p-2 rounded">
+                                    <span className="font-medium">Feedback: </span>
+                                    {submission.coachFeedback}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>
