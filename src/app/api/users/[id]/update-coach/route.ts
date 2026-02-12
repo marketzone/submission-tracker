@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -13,11 +13,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
+    const { id } = await params
     const { coachId } = await request.json()
 
     // Verify the user is a student
     const student = await prisma.user.findUnique({
-      where: { id: params.id, role: "STUDENT" },
+      where: { id, role: "STUDENT" },
     })
 
     if (!student) {
@@ -37,7 +38,7 @@ export async function PATCH(
 
     // Update the student's coach
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         coachId: coachId || null,
       },
