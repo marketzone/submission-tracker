@@ -15,6 +15,7 @@ import {
 
 interface Submission {
   id: string
+  studentId: string
   workbookTitle: string
   workbookUrl: string
   weekNumber: number
@@ -77,6 +78,7 @@ export default function ProgramManagerPage() {
   const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({})
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [expandedCoach, setExpandedCoach] = useState<string | null>(null)
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
 
   // Filters for submissions
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -568,88 +570,169 @@ export default function ProgramManagerPage() {
             {filteredStudents.length === 0 ? (
               <p className="text-gray-500">No students found.</p>
             ) : (
-              filteredStudents.map((student) => (
-                <Card key={student.id}>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-semibold text-lg">{student.name}</h3>
-                        <p className="text-sm text-gray-600">{student.email}</p>
-                        {student.coach && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            Coach: {student.coach.name}
-                          </p>
+              filteredStudents.map((student) => {
+                const studentSubmissions = submissions.filter(
+                  (s) => s.studentId === student.id
+                )
+                return (
+                  <Card key={student.id}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">{student.name}</h3>
+                          <p className="text-sm text-gray-600">{student.email}</p>
+                          {student.coach && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              Coach: {student.coach.name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {studentSubmissions.length} Submissions
+                          </Badge>
+                          <Badge
+                            className={
+                              student.active
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }
+                          >
+                            {student.active ? "Active" : "Deactivated"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <label className="text-sm font-medium mb-2 block">
+                              Assigned Class
+                            </label>
+                            <Select
+                              value={student.studentClass || "NONE"}
+                              onValueChange={(value) =>
+                                updateStudentClass(student.id, value === "NONE" ? null : value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a class" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NONE">No Class</SelectItem>
+                                <SelectItem value="PRE_CLARITY">Pre-Clarity</SelectItem>
+                                <SelectItem value="STRATEGY_CLASS">Strategy Class</SelectItem>
+                                <SelectItem value="FUNNEL_CLASS">Funnel Class</SelectItem>
+                                <SelectItem value="LAUNCH_CLASS">Launch Class</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-sm font-medium mb-2 block">
+                              Assigned Coach
+                            </label>
+                            <Select
+                              value={student.coachId || "NONE"}
+                              onValueChange={(value) =>
+                                updateStudentCoach(student.id, value === "NONE" ? null : value)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a coach" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NONE">No Coach</SelectItem>
+                                {coaches.map((coach) => (
+                                  <SelectItem key={coach.id} value={coach.id}>
+                                    {coach.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            variant={student.active ? "destructive" : "default"}
+                            onClick={() => toggleStudentActive(student.id, student.active)}
+                            className="mt-6"
+                          >
+                            {student.active ? "Deactivate" : "Reactivate"}
+                          </Button>
+                        </div>
+
+                        {/* View Submissions Toggle */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setExpandedStudent(expandedStudent === student.id ? null : student.id)
+                          }
+                        >
+                          {expandedStudent === student.id ? "Hide" : "View"} Submissions ({studentSubmissions.length})
+                        </Button>
+
+                        {/* Expanded Submissions List */}
+                        {expandedStudent === student.id && (
+                          <div className="border-t pt-4 mt-2">
+                            {studentSubmissions.length === 0 ? (
+                              <p className="text-sm text-gray-500">No submissions yet</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {studentSubmissions.map((sub) => (
+                                  <div
+                                    key={sub.id}
+                                    className="border rounded-lg p-3 bg-gray-50"
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <p className="font-medium text-sm">
+                                          {sub.workbookTitle}
+                                        </p>
+                                        <p className="text-xs text-gray-600 mt-1">
+                                          {getWeekLabel(sub.weekNumber)} • Coach: {sub.coach.name}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Submitted: {new Date(sub.submittedAt).toLocaleDateString()}
+                                          {sub.reviewedAt && (
+                                            <> • Reviewed: {new Date(sub.reviewedAt).toLocaleDateString()}</>
+                                          )}
+                                        </p>
+                                      </div>
+                                      <Badge className={getStatusColor(sub.status)}>
+                                        {getStatusLabel(sub.status)}
+                                      </Badge>
+                                    </div>
+                                    {sub.coachFeedback && (
+                                      <div className="mt-2 text-xs bg-blue-50 p-2 rounded">
+                                        <span className="font-medium text-blue-900">Coach Feedback: </span>
+                                        <span className="text-blue-800">{sub.coachFeedback}</span>
+                                      </div>
+                                    )}
+                                    {sub.headCoachFeedback && (
+                                      <div className="mt-1 text-xs bg-purple-50 p-2 rounded">
+                                        <span className="font-medium text-purple-900">Head Coach Feedback: </span>
+                                        <span className="text-purple-800">{sub.headCoachFeedback}</span>
+                                      </div>
+                                    )}
+                                    <div className="mt-2">
+                                      <a
+                                        href={sub.workbookUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:underline"
+                                      >
+                                        View Workbook →
+                                      </a>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <Badge
-                        className={
-                          student.active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }
-                      >
-                        {student.active ? "Active" : "Deactivated"}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <label className="text-sm font-medium mb-2 block">
-                            Assigned Class
-                          </label>
-                          <Select
-                            value={student.studentClass || "NONE"}
-                            onValueChange={(value) =>
-                              updateStudentClass(student.id, value === "NONE" ? null : value)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a class" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="NONE">No Class</SelectItem>
-                              <SelectItem value="PRE_CLARITY">Pre-Clarity</SelectItem>
-                              <SelectItem value="STRATEGY_CLASS">Strategy Class</SelectItem>
-                              <SelectItem value="FUNNEL_CLASS">Funnel Class</SelectItem>
-                              <SelectItem value="LAUNCH_CLASS">Launch Class</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-sm font-medium mb-2 block">
-                            Assigned Coach
-                          </label>
-                          <Select
-                            value={student.coachId || "NONE"}
-                            onValueChange={(value) =>
-                              updateStudentCoach(student.id, value === "NONE" ? null : value)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a coach" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="NONE">No Coach</SelectItem>
-                              {coaches.map((coach) => (
-                                <SelectItem key={coach.id} value={coach.id}>
-                                  {coach.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          variant={student.active ? "destructive" : "default"}
-                          onClick={() => toggleStudentActive(student.id, student.active)}
-                          className="mt-6"
-                        >
-                          {student.active ? "Deactivate" : "Reactivate"}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>
