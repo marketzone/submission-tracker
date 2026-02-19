@@ -208,6 +208,31 @@ export default function HeadCoachDashboard() {
     }
   }
 
+  const handleDeleteStaff = async (staffId: string, staffName: string, role: string) => {
+    const warning = role === "COACH"
+      ? `Are you sure you want to delete ${staffName}? This will also remove all their assigned submissions and unassign their students.`
+      : `Are you sure you want to delete ${staffName}?`
+
+    if (!confirm(warning)) return
+
+    try {
+      const res = await fetch(`/api/users/${staffId}/delete`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        alert(`${staffName} has been deleted successfully`)
+        fetchData()
+      } else {
+        const data = await res.json()
+        alert(`Failed to delete: ${data.error || "Unknown error"}`)
+      }
+    } catch (error) {
+      console.error("Error deleting staff:", error)
+      alert("An error occurred")
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -566,6 +591,12 @@ export default function HeadCoachDashboard() {
                         onClick={() => toggleStaffActive(member.id, member.active)}
                       >
                         {member.active ? "Deactivate" : "Reactivate"}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeleteStaff(member.id, member.name, member.role)}
+                      >
+                        Delete
                       </Button>
                     </div>
                   </CardContent>

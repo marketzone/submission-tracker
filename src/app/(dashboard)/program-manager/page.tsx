@@ -246,6 +246,29 @@ export default function ProgramManagerPage() {
     }
   }
 
+  const deleteSubmission = async (submissionId: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete the submission "${title}"? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/submissions/${submissionId}/delete`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        alert("Submission deleted successfully!")
+        fetchData()
+      } else {
+        const data = await res.json()
+        alert(`Failed to delete submission: ${data.error || "Unknown error"}`)
+      }
+    } catch (error) {
+      console.error("Error deleting submission:", error)
+      alert("An error occurred")
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -485,7 +508,7 @@ export default function ProgramManagerPage() {
                           </p>
                         </div>
                       )}
-                      <div>
+                      <div className="flex items-center justify-between mt-2">
                         <a
                           href={submission.workbookUrl}
                           target="_blank"
@@ -494,6 +517,13 @@ export default function ProgramManagerPage() {
                         >
                           View Workbook →
                         </a>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteSubmission(submission.id, submission.workbookTitle)}
+                        >
+                          Delete Submission
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
