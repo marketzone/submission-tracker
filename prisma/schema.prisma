@@ -19,6 +19,8 @@ model User {
   active           Boolean       @default(true) // For students: can be deactivated
   approved         Boolean       @default(false) // For approval workflow
   studentClass     StudentClass? // For students: assigned class
+  launchStrategy   String?       // For students: their launch strategy
+  launchEventTopic String?       // For students: their launch event topic
   resetToken       String?       // For password reset
   resetTokenExpiry DateTime?     // Token expiration time
   coachId          String?       // For students: their assigned coach

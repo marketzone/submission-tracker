@@ -17,7 +17,13 @@ interface Submission {
   status: string
   coachFeedback?: string | null
   headCoachFeedback?: string | null
-  student: { name: string; email: string }
+  student: {
+    name: string
+    email: string
+    studentClass?: string | null
+    launchStrategy?: string | null
+    launchEventTopic?: string | null
+  }
   submittedAt: string
 }
 
@@ -230,6 +236,23 @@ export default function CoachDashboard() {
                 <div className="text-sm text-gray-600">
                   Submitted on {new Date(submission.submittedAt).toLocaleDateString()}
                 </div>
+
+                {(submission.student.launchStrategy || submission.student.launchEventTopic) && (
+                  <div className="mt-2 rounded-md bg-indigo-50 p-3 space-y-1">
+                    {submission.student.launchStrategy && (
+                      <p className="text-sm">
+                        <span className="font-medium text-indigo-900">Launch Strategy:</span>{" "}
+                        <span className="text-indigo-800">{submission.student.launchStrategy}</span>
+                      </p>
+                    )}
+                    {submission.student.launchEventTopic && (
+                      <p className="text-sm">
+                        <span className="font-medium text-indigo-900">Launch Event Topic:</span>{" "}
+                        <span className="text-indigo-800">{submission.student.launchEventTopic}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {reviewingId === submission.id ? (
                   <div className="mt-4 space-y-4 border-t pt-4">

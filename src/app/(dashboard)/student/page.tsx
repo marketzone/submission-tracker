@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -41,14 +43,23 @@ const getWeekLabel = (weekNumber: number) => {
   return weekNumber === 0 ? "Pre-Clarity Week" : `Week ${weekNumber}`
 }
 
+const ALLOWED_CLASSES = ["STRATEGY_CLASS", "FUNNEL_CLASS", "LAUNCH_CLASS"]
+
 export default function StudentDashboard() {
   const { data: session } = useSession()
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const [resubmitting, setResubmitting] = useState<string | null>(null)
 
+  // Launch info state
+  const [launchStrategy, setLaunchStrategy] = useState("")
+  const [launchEventTopic, setLaunchEventTopic] = useState("")
+  const [studentClass, setStudentClass] = useState<string | null>(null)
+  const [savingLaunchInfo, setSavingLaunchInfo] = useState(false)
+
   useEffect(() => {
     fetchSubmissions()
+    fetchLaunchInfo()
   }, [])
 
   const fetchSubmissions = async () => {
@@ -60,6 +71,41 @@ export default function StudentDashboard() {
       console.error("Error fetching submissions:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchLaunchInfo = async () => {
+    try {
+      const response = await fetch("/api/users/launch-info")
+      const data = await response.json()
+      setLaunchStrategy(data.launchStrategy || "")
+      setLaunchEventTopic(data.launchEventTopic || "")
+      setStudentClass(data.studentClass || null)
+    } catch (error) {
+      console.error("Error fetching launch info:", error)
+    }
+  }
+
+  const saveLaunchInfo = async () => {
+    setSavingLaunchInfo(true)
+    try {
+      const response = await fetch("/api/users/launch-info", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ launchStrategy, launchEventTopic }),
+      })
+
+      if (response.ok) {
+        alert("Launch information saved successfully!")
+      } else {
+        const data = await response.json()
+        alert(data.error || "Failed to save launch information")
+      }
+    } catch (error) {
+      console.error("Error saving launch info:", error)
+      alert("An error occurred")
+    } finally {
+      setSavingLaunchInfo(false)
     }
   }
 
@@ -94,6 +140,45 @@ export default function StudentDashboard() {
           <Button>Submit New Workbook</Button>
         </Link>
       </div>
+
+      {/* Launch Info Section - Only visible for Strategy Class and above */}
+      {studentClass && ALLOWED_CLASSES.includes(studentClass) && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Launch Information</CardTitle>
+            <CardDescription>
+              Record your launch strategy and event topic
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="launchStrategy">Launch Strategy</Label>
+                <Input
+                  id="launchStrategy"
+                  type="text"
+                  placeholder="Enter your launch strategy..."
+                  value={launchStrategy}
+                  onChange={(e) => setLaunchStrategy(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="launchEventTopic">Launch Event Topic</Label>
+                <Input
+                  id="launchEventTopic"
+                  type="text"
+                  placeholder="Enter your launch event topic..."
+                  value={launchEventTopic}
+                  onChange={(e) => setLaunchEventTopic(e.target.value)}
+                />
+              </div>
+              <Button onClick={saveLaunchInfo} disabled={savingLaunchInfo}>
+                {savingLaunchInfo ? "Saving..." : "Save Launch Information"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="text-center py-12">

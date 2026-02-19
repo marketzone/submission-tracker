@@ -30,6 +30,8 @@ export async function GET() {
         approved: true,
         studentClass: true,
         coachId: true,
+        launchStrategy: true,
+        launchEventTopic: true,
         coach: {
           select: {
             id: true,

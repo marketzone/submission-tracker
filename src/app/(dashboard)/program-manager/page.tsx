@@ -45,6 +45,8 @@ interface Student {
   active: boolean
   studentClass?: string | null
   coachId?: string | null
+  launchStrategy?: string | null
+  launchEventTopic?: string | null
   coach?: {
     id: string
     name: string
@@ -585,6 +587,22 @@ export default function ProgramManagerPage() {
                             <p className="text-sm text-gray-500 mt-1">
                               Coach: {student.coach.name}
                             </p>
+                          )}
+                          {(student.launchStrategy || student.launchEventTopic) && (
+                            <div className="mt-2 rounded-md bg-indigo-50 p-2 space-y-1">
+                              {student.launchStrategy && (
+                                <p className="text-xs">
+                                  <span className="font-medium text-indigo-900">Launch Strategy:</span>{" "}
+                                  <span className="text-indigo-800">{student.launchStrategy}</span>
+                                </p>
+                              )}
+                              {student.launchEventTopic && (
+                                <p className="text-xs">
+                                  <span className="font-medium text-indigo-900">Launch Event Topic:</span>{" "}
+                                  <span className="text-indigo-800">{student.launchEventTopic}</span>
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
