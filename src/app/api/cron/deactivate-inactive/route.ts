@@ -16,28 +16,36 @@ export async function GET(request: Request) {
     const twoWeeksAgo = new Date()
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
 
-    // Find all active, approved students
+    // Find all active, approved students who registered MORE than 14 days ago
     const activeStudents = await prisma.user.findMany({
       where: {
         role: "STUDENT",
         active: true,
         approved: true,
+        createdAt: { lt: twoWeeksAgo }, // only consider students registered 14+ days ago
       },
       include: {
         submissions: {
           orderBy: { submittedAt: "desc" },
-          take: 1,
-          select: { submittedAt: true },
+          select: { submittedAt: true, status: true },
         },
       },
     })
 
     const deactivated: string[] = []
+    const activeStatuses = ["PENDING", "COACH_REVIEW", "HEAD_COACH_REVIEW"]
 
     for (const student of activeStudents) {
+      // Skip if student has any submission currently under review or pending
+      const hasActiveSubmission = student.submissions.some(
+        (s) => activeStatuses.includes(s.status)
+      )
+      if (hasActiveSubmission) continue
+
       const lastSubmission = student.submissions[0]
 
-      // Deactivate if: no submissions at all, or last submission was > 2 weeks ago
+      // Deactivate only if: last submission was > 14 days ago (or none at all,
+      // but account must already be older than 14 days due to the query above)
       const shouldDeactivate = !lastSubmission ||
         new Date(lastSubmission.submittedAt) < twoWeeksAgo
 
