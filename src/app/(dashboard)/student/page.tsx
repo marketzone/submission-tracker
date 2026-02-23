@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,11 +44,47 @@ const getWeekLabel = (weekNumber: number) => {
 
 const ALLOWED_CLASSES = ["STRATEGY_CLASS", "FUNNEL_CLASS", "LAUNCH_CLASS"]
 
+const GPT_TOOLS = [
+  {
+    label: "Workbook 1 GPT Tool",
+    href: "https://chatgpt.com/g/g-67beaf286bf881918c8cced710f5265d-expert2coach-review-day-1-upgraded-version",
+    isVideo: false,
+  },
+  {
+    label: "How to use Workbook 1 Internal Review GPT Tool",
+    href: "https://youtu.be/78HGqcOVf0c",
+    isVideo: true,
+  },
+  {
+    label: "Workbook 1 Review GPT Tool",
+    href: "https://chatgpt.com/g/g-69581646e0f481918f76e31912434053-ls-workbook-1-review-internal",
+    isVideo: false,
+  },
+  {
+    label: "Workbook 2 GPT Tool",
+    href: "https://chatgpt.com/g/g-67dbf96c1aac8191885b60e15ecaec07-expert2coach-day-2-walkthrough",
+    isVideo: false,
+  },
+  {
+    label: "How to use Workbook 2 Internal Review GPT Tool",
+    href: "https://youtu.be/SK-UnC4cEqo",
+    isVideo: true,
+  },
+  {
+    label: "Workbook 2 Review GPT Tool",
+    href: "https://chatgpt.com/g/g-694e58bc5d188191968e2e1fd0ac4370-launchsmart-workbook-2-review-gpt",
+    isVideo: false,
+  },
+  {
+    label: "Workbook 2 Adjuster GPT Tool",
+    href: "https://chatgpt.com/g/g-6951752f5010819190794c16ead60f4c-adjuster-ls-workbook-2",
+    isVideo: false,
+  },
+]
+
 export default function StudentDashboard() {
-  const { data: session } = useSession()
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
-  const [resubmitting, setResubmitting] = useState<string | null>(null)
 
   // Launch info state
   const [launchStrategy, setLaunchStrategy] = useState("")
@@ -140,6 +175,36 @@ export default function StudentDashboard() {
           <Button>Submit New Workbook</Button>
         </Link>
       </div>
+
+      {/* GPT Tools Section - Only visible for Pre-Clarity students */}
+      {studentClass === "PRE_CLARITY" && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Internal GPT Review Tools</CardTitle>
+            <CardDescription>
+              Use these tools to review your work before submitting to your coach.
+              You are required to complete a GPT review before each submission.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {GPT_TOOLS.map((tool) => (
+                <div
+                  key={tool.href}
+                  className="flex items-center justify-between border rounded-lg p-3 bg-gray-50"
+                >
+                  <span className="text-sm font-medium text-gray-800">{tool.label}</span>
+                  <a href={tool.href} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant={tool.isVideo ? "outline" : "default"}>
+                      {tool.isVideo ? "Watch Video" : "Open Tool"}
+                    </Button>
+                  </a>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Launch Info Section - Only visible for Strategy Class and above */}
       {studentClass && ALLOWED_CLASSES.includes(studentClass) && (
