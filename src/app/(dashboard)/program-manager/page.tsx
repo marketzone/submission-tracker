@@ -86,6 +86,9 @@ export default function ProgramManagerPage() {
   const [renamingCoachId, setRenamingCoachId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const [renameSaving, setRenameSaving] = useState(false)
+  const [reassigningSubmissionId, setReassigningSubmissionId] = useState<string | null>(null)
+  const [reassignCoachValue, setReassignCoachValue] = useState("")
+  const [reassignSaving, setReassignSaving] = useState(false)
 
   // Filters for submissions
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -304,6 +307,37 @@ export default function ProgramManagerPage() {
     } catch (error) {
       console.error("Error updating student coach:", error)
       alert("An error occurred")
+    }
+  }
+
+  const handleReassignCoach = async (submissionId: string) => {
+    if (!reassignCoachValue) return
+    setReassignSaving(true)
+    try {
+      const res = await fetch(`/api/submissions/${submissionId}/reassign-coach`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coachId: reassignCoachValue }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSubmissions((prev: Submission[]) =>
+          prev.map((s: Submission) =>
+            s.id === submissionId
+              ? { ...s, coach: { name: data.coach.name } }
+              : s
+          )
+        )
+        setReassigningSubmissionId(null)
+        setReassignCoachValue("")
+      } else {
+        const data = await res.json()
+        alert(`Failed to reassign: ${data.error || "Unknown error"}`)
+      }
+    } catch {
+      alert("An error occurred.")
+    } finally {
+      setReassignSaving(false)
     }
   }
 
@@ -537,8 +571,40 @@ export default function ProgramManagerPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Coach:</span> {submission.coach.name}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">Coach:</span>
+                        {reassigningSubmissionId === submission.id ? (
+                          <>
+                            <Select value={reassignCoachValue} onValueChange={setReassignCoachValue}>
+                              <SelectTrigger className="h-7 w-44 text-xs">
+                                <SelectValue placeholder="Select coach" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {coaches.map((c: Coach) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" className="h-7 text-xs px-2" onClick={() => handleReassignCoach(submission.id)} disabled={reassignSaving || !reassignCoachValue}>
+                              {reassignSaving ? "Saving…" : "Save"}
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => { setReassigningSubmissionId(null); setReassignCoachValue("") }}>
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span>{submission.coach.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto py-0 px-1 text-xs text-muted-foreground underline underline-offset-2 font-normal"
+                              onClick={() => { setReassigningSubmissionId(submission.id); setReassignCoachValue("") }}
+                            >
+                              reassign
+                            </Button>
+                          </>
+                        )}
                       </div>
                       {submission.headCoach && (
                         <div>
