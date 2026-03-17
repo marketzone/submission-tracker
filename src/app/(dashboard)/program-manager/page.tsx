@@ -43,6 +43,7 @@ interface Student {
   name: string
   email: string
   active: boolean
+  pendingDeactivation?: boolean
   studentClass?: string | null
   coachId?: string | null
   launchStrategy?: string | null
@@ -76,7 +77,8 @@ export default function ProgramManagerPage() {
   const [pendingStudents, setPendingStudents] = useState<PendingStudent[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"submissions" | "students" | "pending" | "coaches">("submissions")
+  const [activeTab, setActiveTab] = useState<"submissions" | "students" | "pending" | "coaches" | "deactivations">("submissions")
+  const [processingDeactivation, setProcessingDeactivation] = useState<string | null>(null)
   const [selectedClasses, setSelectedClasses] = useState<Record<string, string>>({})
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [expandedCoach, setExpandedCoach] = useState<string | null>(null)
@@ -258,6 +260,32 @@ export default function ProgramManagerPage() {
     }
   }
 
+  const handleDeactivationDecision = async (studentId: string, approve: boolean) => {
+    setProcessingDeactivation(studentId)
+    const endpoint = approve ? "approve-deactivation" : "reject-deactivation"
+    try {
+      const res = await fetch(`/api/users/${studentId}/${endpoint}`, {
+        method: "PATCH",
+      })
+      if (res.ok) {
+        setStudents((prev: Student[]) =>
+          prev.map((s: Student) =>
+            s.id === studentId
+              ? { ...s, pendingDeactivation: false, active: approve ? false : s.active }
+              : s
+          )
+        )
+      } else {
+        const data = await res.json()
+        alert(`Failed: ${data.error || "Unknown error"}`)
+      }
+    } catch {
+      alert("An error occurred.")
+    } finally {
+      setProcessingDeactivation(null)
+    }
+  }
+
   const updateStudentCoach = async (studentId: string, newCoachId: string | null) => {
     try {
       const res = await fetch(`/api/users/${studentId}/update-coach`, {
@@ -411,6 +439,17 @@ export default function ProgramManagerPage() {
           onClick={() => setActiveTab("coaches")}
         >
           Coach Dashboards
+        </Button>
+        <Button
+          variant={activeTab === "deactivations" ? "default" : "outline"}
+          onClick={() => setActiveTab("deactivations")}
+        >
+          Pending Deactivations
+          {students.filter((s: Student) => s.pendingDeactivation).length > 0 && (
+            <Badge className="ml-2 bg-orange-500 text-white">
+              {students.filter((s: Student) => s.pendingDeactivation).length}
+            </Badge>
+          )}
         </Button>
       </div>
 
@@ -1004,6 +1043,68 @@ export default function ProgramManagerPage() {
               })
             )}
           </div>
+        </div>
+      )}
+
+      {/* Pending Deactivations Tab */}
+      {activeTab === "deactivations" && (
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Pending Deactivations</h2>
+          <p className="text-muted-foreground text-sm mb-4">
+            These students have not submitted in 2+ weeks. Review and approve or reject each deactivation.
+          </p>
+
+          {(() => {
+            const pending = students.filter((s: Student) => s.pendingDeactivation)
+            if (pending.length === 0) {
+              return (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground">No students are pending deactivation.</p>
+                  </CardContent>
+                </Card>
+              )
+            }
+            return (
+              <div className="space-y-3">
+                {pending.map((student: Student) => (
+                  <Card key={student.id} className="border-orange-200 bg-orange-50/40">
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">{student.name}</p>
+                          <p className="text-sm text-muted-foreground">{student.email}</p>
+                          {student.coach && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Coach: {student.coach.name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={processingDeactivation === student.id}
+                            onClick={() => handleDeactivationDecision(student.id, true)}
+                          >
+                            {processingDeactivation === student.id ? "Processing…" : "Approve Deactivation"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={processingDeactivation === student.id}
+                            onClick={() => handleDeactivationDecision(student.id, false)}
+                          >
+                            Reject (Keep Active)
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>

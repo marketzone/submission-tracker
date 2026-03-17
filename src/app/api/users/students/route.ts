@@ -28,6 +28,7 @@ export async function GET() {
         email: true,
         active: true,
         approved: true,
+        pendingDeactivation: true,
         studentClass: true,
         coachId: true,
         launchStrategy: true,

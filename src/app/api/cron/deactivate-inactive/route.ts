@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 
 // This endpoint checks for students who haven't submitted in 2 weeks
-// and automatically deactivates them with an email notification.
+// and flags them as pendingDeactivation for PM review (instead of directly deactivating).
 // Should be called via Vercel Cron or external scheduler.
 export async function GET(request: Request) {
   try {
@@ -16,13 +16,15 @@ export async function GET(request: Request) {
     const twoWeeksAgo = new Date()
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
 
-    // Find all active, approved students who registered MORE than 14 days ago
+    // Find all active, approved students not already pending deactivation,
+    // who registered MORE than 14 days ago
     const activeStudents = await prisma.user.findMany({
       where: {
         role: "STUDENT",
         active: true,
         approved: true,
-        createdAt: { lt: twoWeeksAgo }, // only consider students registered 14+ days ago
+        pendingDeactivation: false,
+        createdAt: { lt: twoWeeksAgo },
       },
       include: {
         submissions: {
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
       },
     })
 
-    const deactivated: string[] = []
+    const flagged: string[] = []
     const activeStatuses = ["PENDING", "COACH_REVIEW", "HEAD_COACH_REVIEW"]
 
     for (const student of activeStudents) {
@@ -43,43 +45,49 @@ export async function GET(request: Request) {
       if (hasActiveSubmission) continue
 
       const lastSubmission = student.submissions[0]
-
-      // Deactivate only if: last submission was > 14 days ago (or none at all,
-      // but account must already be older than 14 days due to the query above)
-      const shouldDeactivate = !lastSubmission ||
+      const shouldFlag =
+        !lastSubmission ||
         new Date(lastSubmission.submittedAt) < twoWeeksAgo
 
-      if (shouldDeactivate) {
-        // Deactivate the student
+      if (shouldFlag) {
+        // Flag for PM review instead of directly deactivating
         await prisma.user.update({
           where: { id: student.id },
-          data: { active: false },
+          data: { pendingDeactivation: true },
         })
 
-        // Send notification email
+        flagged.push(student.name)
+      }
+    }
+
+    // Notify all program managers about pending deactivations
+    if (flagged.length > 0) {
+      const programManagers = await prisma.user.findMany({
+        where: { role: "PROGRAM_MANAGER", active: true, approved: true },
+        select: { email: true, name: true },
+      })
+
+      for (const pm of programManagers) {
         await sendEmail({
-          to: student.email,
-          subject: "Account Suspended - Inactivity Notice",
+          to: pm.email,
+          subject: `${flagged.length} Student(s) Flagged for Deactivation Review`,
           html: `
-            <h2>Account Suspended Due to Inactivity</h2>
-            <p>Hi ${student.name},</p>
-            <p>Your account has been automatically suspended because you have not made a workbook submission in the last 2 weeks.</p>
-            <p>To reactivate your account, you will need to pay a <strong>$20 reactivation penalty fee</strong>.</p>
-            <p>Please contact the program manager to arrange payment and have your access restored.</p>
-            <p>We encourage all students to stay on track with their weekly submissions to avoid future suspensions.</p>
-            <p>Thank you,<br/>LaunchSmart Team</p>
+            <h2>Deactivation Review Required</h2>
+            <p>Hi ${pm.name},</p>
+            <p>The following ${flagged.length} student(s) have not submitted a workbook in the last 2 weeks and have been flagged for deactivation:</p>
+            <ul>${flagged.map((name) => `<li>${name}</li>`).join("")}</ul>
+            <p>Please log in to the Program Manager dashboard and review the <strong>Pending Deactivations</strong> section to approve or reject each deactivation.</p>
+            <p>Thank you,<br/>LaunchSmart System</p>
           `,
         })
-
-        deactivated.push(student.name)
       }
     }
 
     return NextResponse.json({
       success: true,
       checked: activeStudents.length,
-      deactivated: deactivated.length,
-      deactivatedStudents: deactivated,
+      flagged: flagged.length,
+      flaggedStudents: flagged,
     })
   } catch (error) {
     console.error("Error in deactivation cron:", error)

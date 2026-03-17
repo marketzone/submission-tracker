@@ -42,7 +42,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Invalid credentials")
         }
 
-        // Return user data - approval/active checks will be done in session callback
+        if (!user.approved) {
+          throw new Error("NOT_APPROVED")
+        }
+
+        if (!user.active) {
+          throw new Error("INACTIVE")
+        }
+
         return {
           id: user.id,
           email: user.email,

@@ -106,6 +106,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    if (!session.user.active) {
+      return NextResponse.json({ error: "Your account is deactivated. You cannot submit." }, { status: 403 })
+    }
+
     const { workbookTitle, workbookUrl, weekNumber, coachId } =
       await request.json()
 

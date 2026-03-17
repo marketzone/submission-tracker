@@ -16,8 +16,9 @@ model User {
   name             String
   password         String        // hashed
   role             UserRole      @default(STUDENT)
-  active           Boolean       @default(true) // For students: can be deactivated
-  approved         Boolean       @default(false) // For approval workflow
+  active                Boolean       @default(true) // For students: can be deactivated
+  approved              Boolean       @default(false) // For approval workflow
+  pendingDeactivation   Boolean       @default(false) // Flagged by cron, awaiting PM decision
   studentClass     StudentClass? // For students: assigned class
   launchStrategy   String?       // For students: their launch strategy
   launchEventTopic String?       // For students: their launch event topic

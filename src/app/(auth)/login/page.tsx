@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+type ErrorType = "INACTIVE" | "NOT_APPROVED" | "INVALID" | "GENERIC" | null
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [errorType, setErrorType] = useState<ErrorType>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setErrorType(null)
     setLoading(true)
 
     try {
@@ -28,52 +30,38 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        if (result.error === "CredentialsSignin") {
-          setError("Invalid email or password.")
+        if (result.error === "INACTIVE") {
+          setErrorType("INACTIVE")
+        } else if (result.error === "NOT_APPROVED") {
+          setErrorType("NOT_APPROVED")
+        } else if (result.error === "CredentialsSignin") {
+          // NextAuth may wrap custom errors — fall back to a status check
+          const statusRes = await fetch(`/api/auth/check-status?email=${encodeURIComponent(email)}`)
+          const statusData = await statusRes.json()
+          if (statusData.status === "INACTIVE") {
+            setErrorType("INACTIVE")
+          } else if (statusData.status === "NOT_APPROVED") {
+            setErrorType("NOT_APPROVED")
+          } else {
+            setErrorType("INVALID")
+          }
         } else {
-          setError(`Login failed: ${result.error}`)
+          setErrorType("GENERIC")
         }
       } else if (result?.ok) {
-        const sessionResponse = await fetch("/api/auth/session")
-        const sessionData = await sessionResponse.json()
-
-        if (sessionData?.user) {
-          if (!sessionData.user.approved) {
-            await signIn("credentials", { redirect: false })
-            if (sessionData.user.role === "STUDENT") {
-              setError("Your account is pending approval by the program manager.")
-            } else {
-              setError("Your account is pending approval by the head coach.")
-            }
-            setLoading(false)
-            return
-          }
-
-          if (!sessionData.user.active) {
-            await signIn("credentials", { redirect: false })
-            if (sessionData.user.role === "STUDENT") {
-              setError("Your account has been deactivated. Please contact the program manager.")
-            } else {
-              setError("Your account has been deactivated. Please contact the head coach.")
-            }
-            setLoading(false)
-            return
-          }
-        }
-
         router.push("/")
         router.refresh()
       } else {
-        setError("Login failed. Please check your credentials.")
+        setErrorType("GENERIC")
       }
     } catch {
-      setError("An error occurred. Please try again.")
+      setErrorType("GENERIC")
     } finally {
       setLoading(false)
     }
   }
 
-  const isPendingApproval = error.includes("pending approval") || error.includes("deactivated")
+  const isPendingApproval = errorType === "NOT_APPROVED"
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
@@ -126,13 +114,31 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
+            {errorType && (
               <div className={`rounded-lg p-3 text-sm ${
                 isPendingApproval
                   ? "bg-blue-50 border border-blue-200 text-blue-700"
+                  : errorType === "INACTIVE"
+                  ? "bg-amber-50 border border-amber-200 text-amber-800"
                   : "bg-red-50 border border-red-200 text-red-600"
               }`}>
-                {error}
+                {errorType === "INACTIVE" && (
+                  <>
+                    You have been deactivated for being inactive for 2 weeks. Please visit{" "}
+                    <a
+                      href="https://launchsmart.selar.com/2196921677"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-medium"
+                    >
+                      launchsmart.selar.com
+                    </a>
+                    , pay the reactivation fee and you will be reactivated.
+                  </>
+                )}
+                {errorType === "NOT_APPROVED" && "Your account is pending approval. You will be notified once approved."}
+                {errorType === "INVALID" && "Invalid email or password."}
+                {errorType === "GENERIC" && "An error occurred. Please try again."}
               </div>
             )}
 
