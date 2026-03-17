@@ -81,6 +81,9 @@ export default function ProgramManagerPage() {
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [expandedCoach, setExpandedCoach] = useState<string | null>(null)
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
+  const [renamingCoachId, setRenamingCoachId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+  const [renameSaving, setRenameSaving] = useState(false)
 
   // Filters for submissions
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -226,6 +229,32 @@ export default function ProgramManagerPage() {
     } catch (error) {
       console.error("Error updating student class:", error)
       alert("An error occurred")
+    }
+  }
+
+  const handleRenameCoach = async (coachId: string) => {
+    if (!renameValue.trim()) return
+    setRenameSaving(true)
+    try {
+      const res = await fetch(`/api/users/${coachId}/update-name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      })
+      if (res.ok) {
+        setCoaches((prev) =>
+          prev.map((c) => (c.id === coachId ? { ...c, name: renameValue.trim() } : c))
+        )
+        setRenamingCoachId(null)
+        setRenameValue("")
+      } else {
+        const data = await res.json()
+        alert(`Failed to rename: ${data.error || "Unknown error"}`)
+      }
+    } catch {
+      alert("An error occurred while renaming.")
+    } finally {
+      setRenameSaving(false)
     }
   }
 
@@ -872,8 +901,39 @@ export default function ProgramManagerPage() {
                   <Card key={coach.id}>
                     <CardHeader>
                       <div className="flex justify-between items-center">
-                        <div>
-                          <CardTitle className="text-lg">{coach.name}</CardTitle>
+                        <div className="flex-1 mr-4">
+                          {renamingCoachId === coach.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={renameValue}
+                                onChange={(e: { target: { value: string } }) => setRenameValue(e.target.value)}
+                                className="h-8 text-sm w-48"
+                                autoFocus
+                                onKeyDown={(e: { key: string }) => {
+                                  if (e.key === "Enter") handleRenameCoach(coach.id)
+                                  if (e.key === "Escape") { setRenamingCoachId(null); setRenameValue("") }
+                                }}
+                              />
+                              <Button size="sm" onClick={() => handleRenameCoach(coach.id)} disabled={renameSaving}>
+                                {renameSaving ? "Saving…" : "Save"}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => { setRenamingCoachId(null); setRenameValue("") }}>
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg">{coach.name}</CardTitle>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto py-0 px-1 text-xs text-muted-foreground underline underline-offset-2 font-normal"
+                                onClick={() => { setRenamingCoachId(coach.id); setRenameValue(coach.name) }}
+                              >
+                                rename
+                              </Button>
+                            </div>
+                          )}
                           <CardDescription>{coach.email}</CardDescription>
                         </div>
                         <div className="flex gap-2 items-center">
