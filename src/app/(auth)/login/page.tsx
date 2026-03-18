@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +10,6 @@ import { Label } from "@/components/ui/label"
 type ErrorType = "INACTIVE" | "NOT_APPROVED" | "INVALID" | "GENERIC" | null
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errorType, setErrorType] = useState<ErrorType>(null)
@@ -29,13 +27,16 @@ export default function LoginPage() {
         redirect: false,
       })
 
+      if (result?.ok) {
+        // Successful login — hard redirect for a clean session start
+        window.location.href = "/"
+        return
+      }
+
       if (result?.error) {
-        if (result.error === "INACTIVE") {
-          setErrorType("INACTIVE")
-        } else if (result.error === "NOT_APPROVED") {
-          setErrorType("NOT_APPROVED")
-        } else if (result.error === "CredentialsSignin") {
-          // NextAuth may wrap custom errors — fall back to a status check
+        // NextAuth v5 always wraps authorize() errors as "CredentialsSignin"
+        // Fall back to the check-status API to get the real reason
+        try {
           const statusRes = await fetch(`/api/auth/check-status?email=${encodeURIComponent(email)}`)
           const statusData = await statusRes.json()
           if (statusData.status === "INACTIVE") {
@@ -45,12 +46,9 @@ export default function LoginPage() {
           } else {
             setErrorType("INVALID")
           }
-        } else {
-          setErrorType("GENERIC")
+        } catch {
+          setErrorType("INVALID")
         }
-      } else if (result?.ok) {
-        router.push("/")
-        router.refresh()
       } else {
         setErrorType("GENERIC")
       }
