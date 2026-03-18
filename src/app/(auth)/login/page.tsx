@@ -28,8 +28,20 @@ export default function LoginPage() {
       })
 
       if (result?.ok) {
-        // Successful login — hard redirect for a clean session start
-        window.location.href = "/"
+        // Confirm the session cookie is readable before navigating
+        const sessionRes = await fetch("/api/auth/session")
+        const session = await sessionRes.json()
+        if (session?.user?.role) {
+          const roleRoutes: Record<string, string> = {
+            STUDENT: "/student",
+            COACH: "/coach",
+            HEAD_COACH: "/head-coach",
+            PROGRAM_MANAGER: "/program-manager",
+          }
+          window.location.href = roleRoutes[session.user.role] ?? "/"
+        } else {
+          window.location.href = "/"
+        }
         return
       }
 
