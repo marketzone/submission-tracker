@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { signIn, getSession } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,20 +28,17 @@ export default function LoginPage() {
       })
 
       if (result?.ok) {
-        // Confirm the session cookie is readable before navigating
-        const sessionRes = await fetch("/api/auth/session")
-        const session = await sessionRes.json()
-        if (session?.user?.role) {
-          const roleRoutes: Record<string, string> = {
-            STUDENT: "/student",
-            COACH: "/coach",
-            HEAD_COACH: "/head-coach",
-            PROGRAM_MANAGER: "/program-manager",
-          }
-          window.location.href = roleRoutes[session.user.role] ?? "/"
-        } else {
-          window.location.href = "/"
+        // Use getSession() — the NextAuth client SDK reads the JWT cookie
+        // reliably after signIn, unlike a raw fetch to /api/auth/session
+        const session = await getSession()
+        const roleRoutes: Record<string, string> = {
+          STUDENT: "/student",
+          COACH: "/coach",
+          HEAD_COACH: "/head-coach",
+          PROGRAM_MANAGER: "/program-manager",
         }
+        const role = (session?.user as any)?.role
+        window.location.href = role ? (roleRoutes[role] ?? "/") : "/"
         return
       }
 
