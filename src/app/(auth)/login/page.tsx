@@ -1,18 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, getSession } from "next-auth/react"
 import Link from "next/link"
+import { loginAction, type LoginError } from "./actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-type ErrorType = "INACTIVE" | "NOT_APPROVED" | "INVALID" | "GENERIC" | null
-
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [errorType, setErrorType] = useState<ErrorType>(null)
+  const [errorType, setErrorType] = useState<LoginError | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,47 +19,15 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.ok) {
-        // Use getSession() — the NextAuth client SDK reads the JWT cookie
-        // reliably after signIn, unlike a raw fetch to /api/auth/session
-        const session = await getSession()
-        const roleRoutes: Record<string, string> = {
-          STUDENT: "/student",
-          COACH: "/coach",
-          HEAD_COACH: "/head-coach",
-          PROGRAM_MANAGER: "/program-manager",
-        }
-        const role = (session?.user as any)?.role
-        window.location.href = role ? (roleRoutes[role] ?? "/") : "/"
-        return
-      }
-
-      if (result?.error) {
-        // NextAuth v5 always wraps authorize() errors as "CredentialsSignin"
-        // Fall back to the check-status API to get the real reason
-        try {
-          const statusRes = await fetch(`/api/auth/check-status?email=${encodeURIComponent(email)}`)
-          const statusData = await statusRes.json()
-          if (statusData.status === "INACTIVE") {
-            setErrorType("INACTIVE")
-          } else if (statusData.status === "NOT_APPROVED") {
-            setErrorType("NOT_APPROVED")
-          } else {
-            setErrorType("INVALID")
-          }
-        } catch {
-          setErrorType("INVALID")
-        }
-      } else {
-        setErrorType("GENERIC")
-      }
+      // loginAction runs server-side: sets the JWT cookie and redirects atomically.
+      // On success it throws NEXT_REDIRECT (handled by Next.js — browser navigates).
+      // On failure it returns { error } so we can show the right message.
+      const result = await loginAction(email, password)
+      // If we reach here, login failed and we have an error code
+      setErrorType(result.error as LoginError)
     } catch {
+      // NEXT_REDIRECT from a successful login — Next.js handles the navigation.
+      // Any other unexpected exception shows a generic error.
       setErrorType("GENERIC")
     } finally {
       setLoading(false)
