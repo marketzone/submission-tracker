@@ -15,9 +15,17 @@ export default auth((req) => {
   }
 
   // Block deactivated or unapproved users who still have a JWT session
+  // active/approved are refreshed from DB on every auth() call (see auth.ts jwt callback)
   if (isProtectedRoute && isLoggedIn && user) {
-    if (!user.active || !user.approved) {
-      return Response.redirect(new URL("/login", req.url))
+    if (!user.active) {
+      const loginUrl = new URL("/login", req.url)
+      loginUrl.searchParams.set("error", "INACTIVE")
+      return Response.redirect(loginUrl)
+    }
+    if (!user.approved) {
+      const loginUrl = new URL("/login", req.url)
+      loginUrl.searchParams.set("error", "NOT_APPROVED")
+      return Response.redirect(loginUrl)
     }
   }
 

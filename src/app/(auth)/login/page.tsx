@@ -1,17 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { loginAction, type LoginError } from "./actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errorType, setErrorType] = useState<LoginError | null>(null)
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Show error when middleware redirects here with ?error=INACTIVE etc.
+  useEffect(() => {
+    const error = searchParams.get("error") as LoginError | null
+    if (error === "INACTIVE" || error === "NOT_APPROVED") {
+      setErrorType(error)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,5 +147,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

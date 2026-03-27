@@ -64,10 +64,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Initial sign-in — populate token from authorize() return value
         token.id = user.id as string
         token.role = (user as any).role as string
         token.approved = (user as any).approved as boolean
         token.active = (user as any).active as boolean
+      } else if (token.id) {
+        // Every subsequent auth() call — re-fetch active/approved from DB
+        // so deactivations/approvals take effect immediately without re-login
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { active: true, approved: true },
+        })
+        if (dbUser) {
+          token.active = dbUser.active
+          token.approved = dbUser.approved
+        }
       }
       return token
     },
