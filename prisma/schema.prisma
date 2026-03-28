@@ -27,9 +27,10 @@ model User {
   coachId          String?       // For students: their assigned coach
   coach            User?         @relation("CoachStudents", fields: [coachId], references: [id])
   students         User[]        @relation("CoachStudents")
-  submissions      Submission[]  @relation("StudentSubmissions")
-  coachReviews     Submission[]  @relation("CoachReviews")
-  headCoachReviews Submission[]  @relation("HeadCoachReviews")
+  submissions      Submission[]      @relation("StudentSubmissions")
+  coachReviews     Submission[]      @relation("CoachReviews")
+  headCoachReviews Submission[]      @relation("HeadCoachReviews")
+  strategyProgress StrategyProgress?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 }
@@ -46,6 +47,24 @@ enum StudentClass {
   STRATEGY_CLASS
   FUNNEL_CLASS
   LAUNCH_CLASS
+}
+
+model StrategyProgress {
+  id        String         @id @default(cuid())
+  studentId String         @unique
+  action    StrategyAction
+  student   User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([studentId])
+}
+
+enum StrategyAction {
+  CANVA_SUBMITTED   // Canva images created & submitted in WhatsApp for coach review
+  POST_APPROVED     // Can post approved by coach
+  AD_SETUP_PENDING  // Ad setup waiting for metrics
+  METRICS_READ      // Metrics read — ready for Week 2
 }
 
 model Submission {

@@ -34,6 +34,31 @@ const getWeekLabel = (weekNumber: number) =>
 
 const ALLOWED_CLASSES = ["STRATEGY_CLASS", "FUNNEL_CLASS", "LAUNCH_CLASS"]
 
+const STRATEGY_ACTIONS = [
+  {
+    key: "CANVA_SUBMITTED",
+    label: "Canva images created & submitted in WhatsApp for coach review",
+    step: 1,
+  },
+  {
+    key: "POST_APPROVED",
+    label: "Can post approved by coach",
+    step: 2,
+  },
+  {
+    key: "AD_SETUP_PENDING",
+    label: "Ad setup waiting for metrics",
+    step: 3,
+  },
+  {
+    key: "METRICS_READ",
+    label: "Metrics read — ready for Week 2",
+    step: 4,
+  },
+] as const
+
+type StrategyActionKey = typeof STRATEGY_ACTIONS[number]["key"]
+
 const GPT_TOOLS = [
   { label: "Workbook 1 GPT Tool", href: "https://chatgpt.com/g/g-67beaf286bf881918c8cced710f5265d-expert2coach-review-day-1-upgraded-version", isVideo: false },
   { label: "How to use Workbook 1 Internal Review GPT Tool", href: "https://youtu.be/78HGqcOVf0c", isVideo: true },
@@ -69,6 +94,13 @@ export default function StudentDashboard() {
   const [savingLaunchInfo, setSavingLaunchInfo] = useState(false)
   const [saveLaunchSuccess, setSaveLaunchSuccess] = useState(false)
 
+  // Strategy Class progress
+  const [strategyAction, setStrategyAction] = useState<StrategyActionKey | null>(null)
+  const [selectedAction, setSelectedAction] = useState<StrategyActionKey | null>(null)
+  const [savingStrategy, setSavingStrategy] = useState(false)
+  const [strategySuccess, setStrategySuccess] = useState(false)
+  const [strategyUpdatedAt, setStrategyUpdatedAt] = useState<string | null>(null)
+
   useEffect(() => {
     fetchSubmissions()
     fetchLaunchInfo()
@@ -93,8 +125,53 @@ export default function StudentDashboard() {
       setLaunchStrategy(data.launchStrategy || "")
       setLaunchEventTopic(data.launchEventTopic || "")
       setStudentClass(data.studentClass || null)
+
+      if (data.studentClass === "STRATEGY_CLASS") {
+        fetchStrategyProgress()
+      }
     } catch (error) {
       console.error("Error fetching launch info:", error)
+    }
+  }
+
+  const fetchStrategyProgress = async () => {
+    try {
+      const res = await fetch("/api/strategy-progress")
+      const data = await res.json()
+      if (data.progress) {
+        setStrategyAction(data.progress.action)
+        setSelectedAction(data.progress.action)
+        setStrategyUpdatedAt(data.progress.updatedAt)
+      }
+    } catch (error) {
+      console.error("Error fetching strategy progress:", error)
+    }
+  }
+
+  const saveStrategyProgress = async () => {
+    if (!selectedAction) return
+    setSavingStrategy(true)
+    setStrategySuccess(false)
+    try {
+      const res = await fetch("/api/strategy-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: selectedAction }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setStrategyAction(selectedAction)
+        setStrategyUpdatedAt(data.progress.updatedAt)
+        setStrategySuccess(true)
+        setTimeout(() => setStrategySuccess(false), 3000)
+      } else {
+        alert("Failed to save progress")
+      }
+    } catch (error) {
+      console.error("Error saving strategy progress:", error)
+      alert("An error occurred")
+    } finally {
+      setSavingStrategy(false)
     }
   }
 
@@ -176,6 +253,96 @@ export default function StudentDashboard() {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {/* Strategy Class Progress Tracker */}
+      {studentClass === "STRATEGY_CLASS" && (
+        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-indigo-50 to-white">
+            <h2 className="text-base font-semibold text-foreground">Strategy Class Progress</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Select your current stage — this counts as activity and keeps your account active.
+            </p>
+          </div>
+          <div className="p-5 space-y-3">
+            {STRATEGY_ACTIONS.map((action) => {
+              const isSelected = selectedAction === action.key
+              const isSaved = strategyAction === action.key
+              return (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={() => setSelectedAction(action.key)}
+                  className={`w-full text-left flex items-center gap-4 rounded-xl border px-4 py-3.5 transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-primary/40 hover:bg-muted/30"
+                  }`}
+                >
+                  {/* Step circle */}
+                  <div className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                    isSelected
+                      ? "bg-primary text-white"
+                      : isSaved
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {isSaved && !isSelected ? (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    ) : (
+                      action.step
+                    )}
+                  </div>
+                  <span className={`text-sm font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>
+                    {action.label}
+                  </span>
+                  {isSelected && (
+                    <span className="ml-auto shrink-0">
+                      <svg className="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={saveStrategyProgress}
+                disabled={savingStrategy || !selectedAction || selectedAction === strategyAction}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingStrategy ? (
+                  <>
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Saving...
+                  </>
+                ) : "Save Progress"}
+              </button>
+
+              {strategySuccess && (
+                <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Progress saved
+                </span>
+              )}
+
+              {strategyUpdatedAt && !strategySuccess && (
+                <span className="text-xs text-muted-foreground">
+                  Last updated {new Date(strategyUpdatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Launch Info — Strategy Class+ */}

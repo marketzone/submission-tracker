@@ -31,6 +31,9 @@ export async function GET(request: Request) {
           orderBy: { submittedAt: "desc" },
           select: { submittedAt: true, status: true },
         },
+        strategyProgress: {
+          select: { updatedAt: true },
+        },
       },
     })
 
@@ -45,9 +48,20 @@ export async function GET(request: Request) {
       if (hasActiveSubmission) continue
 
       const lastSubmission = student.submissions[0]
+      const lastSubmissionDate = lastSubmission ? new Date(lastSubmission.submittedAt) : null
+
+      // Strategy Class students: also count strategy progress updates as activity
+      const lastStrategyUpdate = student.strategyProgress?.updatedAt ?? null
+      const lastActivityDate = [lastSubmissionDate, lastStrategyUpdate]
+        .filter(Boolean)
+        .reduce((latest: Date | null, d) => {
+          if (!latest) return d as Date
+          return (d as Date) > latest ? (d as Date) : latest
+        }, null)
+
       const shouldFlag =
-        !lastSubmission ||
-        new Date(lastSubmission.submittedAt) < twoWeeksAgo
+        !lastActivityDate ||
+        lastActivityDate < twoWeeksAgo
 
       if (shouldFlag) {
         // Flag for PM review instead of directly deactivating
