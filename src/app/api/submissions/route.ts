@@ -106,7 +106,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!session.user.active) {
+    // Re-check active status directly from DB — the JWT may be stale
+    // (middleware runs on Edge and cannot use Prisma to refresh it)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { active: true },
+    })
+    if (!dbUser?.active) {
       return NextResponse.json({ error: "Your account is deactivated. You cannot submit." }, { status: 403 })
     }
 
