@@ -42,7 +42,7 @@ const STRATEGY_ACTIONS = [
   },
   {
     key: "POST_APPROVED",
-    label: "Can post approved by coach",
+    label: "Canva post approved by coach",
     step: 2,
   },
   {
