@@ -13,8 +13,10 @@ interface Submission {
   workbookUrl: string
   weekNumber: number
   status: string
+  studentNote?: string | null
   coachFeedback?: string | null
   headCoachFeedback?: string | null
+  returnedByHeadCoach: boolean
   coach: { name: string }
   headCoach?: { name: string } | null
   submittedAt: string
@@ -450,6 +452,13 @@ export default function StudentDashboard() {
                     Submitted {new Date(submission.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
 
+                  {submission.studentNote && (
+                    <div className="mt-4 rounded-lg bg-sky-50 border border-sky-200 p-3">
+                      <p className="text-xs font-semibold text-sky-800 uppercase tracking-wide mb-1">Your Note</p>
+                      <p className="text-sm text-sky-900">{submission.studentNote}</p>
+                    </div>
+                  )}
+
                   {submission.coachFeedback && (
                     <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
                       <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Coach Feedback</p>
@@ -470,7 +479,7 @@ export default function StudentDashboard() {
                         Please make the requested corrections and resubmit your workbook.
                       </p>
                       <Button onClick={() => handleResubmit(submission.id)} size="sm">
-                        Mark Corrected &amp; Resubmit
+                        Mark Corrected &amp; Resubmit{submission.returnedByHeadCoach ? " to Head Coach" : ""}
                       </Button>
                     </div>
                   )}

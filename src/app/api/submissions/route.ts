@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Your account is deactivated. You cannot submit." }, { status: 403 })
     }
 
-    const { workbookTitle, workbookUrl, weekNumber, coachId } =
+    const { workbookTitle, workbookUrl, weekNumber, coachId, studentNote } =
       await request.json()
 
     // Validate required fields (weekNumber can be 0 for Pre-Clarity Week)
@@ -145,6 +145,7 @@ export async function POST(request: Request) {
         weekNumber,
         coachId,
         status: "PENDING",
+        studentNote: studentNote || null,
       },
       include: {
         student: { select: { name: true, email: true } },

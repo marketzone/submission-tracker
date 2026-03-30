@@ -14,6 +14,7 @@ interface Submission {
   workbookUrl: string
   weekNumber: number
   status: string
+  studentNote?: string | null
   coachFeedback?: string | null
   headCoachFeedback?: string | null
   student: {
@@ -253,6 +254,13 @@ export default function CoachDashboard() {
                           <span className="text-indigo-800">{submission.student.launchEventTopic}</span>
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {submission.studentNote && (
+                    <div className="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3">
+                      <p className="text-xs font-semibold text-sky-800 uppercase tracking-wide mb-1">Note from Student</p>
+                      <p className="text-sm text-sky-900">{submission.studentNote}</p>
                     </div>
                   )}
 

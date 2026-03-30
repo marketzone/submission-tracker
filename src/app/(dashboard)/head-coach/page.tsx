@@ -12,6 +12,7 @@ interface Submission {
   workbookUrl: string
   weekNumber: number
   status: string
+  studentNote?: string | null
   coachFeedback?: string | null
   student: { name: string; email: string }
   coach: { name: string; email: string }
@@ -344,6 +345,13 @@ export default function HeadCoachDashboard() {
                           Submitted {new Date(submission.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           {submission.reviewedAt && ` · Coach reviewed ${new Date(submission.reviewedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
                         </p>
+
+                        {submission.studentNote && (
+                          <div className="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3">
+                            <p className="text-xs font-semibold text-sky-800 uppercase tracking-wide mb-1">Note from Student</p>
+                            <p className="text-sm text-sky-900">{submission.studentNote}</p>
+                          </div>
+                        )}
 
                         {submission.coachFeedback && (
                           <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3">

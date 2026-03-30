@@ -21,6 +21,7 @@ export async function PATCH(
       where: { id: submissionId },
       include: {
         coach: { select: { name: true, email: true } },
+        headCoach: { select: { name: true, email: true } },
         student: { select: { name: true, email: true } },
       },
     })
@@ -48,30 +49,59 @@ export async function PATCH(
       )
     }
 
-    // Update submission status back to PENDING for coach review
-    const updatedSubmission = await prisma.submission.update({
-      where: { id: submissionId },
-      data: {
-        status: "PENDING",
-        coachFeedback: null,
-        reviewedAt: null,
-      },
-    })
+    if (submission.returnedByHeadCoach) {
+      // Was sent back by head coach — resubmit directly to head coach
+      const updatedSubmission = await prisma.submission.update({
+        where: { id: submissionId },
+        data: {
+          status: "HEAD_COACH_REVIEW",
+          headCoachFeedback: null,
+          returnedByHeadCoach: false,
+        },
+      })
 
-    // Notify coach
-    const coachEmail = emailTemplates.newReviewRequest(
-      submission.coach.name,
-      submission.student.name,
-      submission.workbookTitle,
-      submission.weekNumber
-    )
-    await sendEmail({
-      to: submission.coach.email,
-      subject: "Resubmitted: " + coachEmail.subject,
-      html: coachEmail.html,
-    })
+      // Notify head coach
+      if (submission.headCoach) {
+        const headCoachEmail = emailTemplates.headCoachReviewRequest(
+          submission.headCoach.name,
+          submission.student.name,
+          submission.workbookTitle,
+          submission.coach.name
+        )
+        await sendEmail({
+          to: submission.headCoach.email,
+          subject: "Resubmitted: " + headCoachEmail.subject,
+          html: headCoachEmail.html,
+        })
+      }
 
-    return NextResponse.json({ submission: updatedSubmission })
+      return NextResponse.json({ submission: updatedSubmission })
+    } else {
+      // Was sent back by coach — resubmit to coach as normal
+      const updatedSubmission = await prisma.submission.update({
+        where: { id: submissionId },
+        data: {
+          status: "PENDING",
+          coachFeedback: null,
+          reviewedAt: null,
+        },
+      })
+
+      // Notify coach
+      const coachEmail = emailTemplates.newReviewRequest(
+        submission.coach.name,
+        submission.student.name,
+        submission.workbookTitle,
+        submission.weekNumber
+      )
+      await sendEmail({
+        to: submission.coach.email,
+        subject: "Resubmitted: " + coachEmail.subject,
+        html: coachEmail.html,
+      })
+
+      return NextResponse.json({ submission: updatedSubmission })
+    }
   } catch (error) {
     console.error("Error resubmitting:", error)
     return NextResponse.json(

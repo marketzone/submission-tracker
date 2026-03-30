@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 
 const GPT_TOOLS = [
@@ -26,6 +27,7 @@ export default function SubmitWorkbookPage() {
   const [workbookUrl, setWorkbookUrl] = useState("")
   const [weekNumber, setWeekNumber] = useState("")
   const [coachId, setCoachId] = useState("")
+  const [studentNote, setStudentNote] = useState("")
   const [coaches, setCoaches] = useState<Array<{ id: string; name: string }>>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -68,6 +70,7 @@ export default function SubmitWorkbookPage() {
           workbookUrl,
           weekNumber: parseInt(weekNumber),
           coachId,
+          studentNote: studentNote.trim() || undefined,
         }),
       })
 
@@ -268,6 +271,18 @@ export default function SubmitWorkbookPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="studentNote" className="text-sm font-medium">Note to Coach <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Textarea
+              id="studentNote"
+              placeholder="Add any context or information your coach should know before reviewing..."
+              value={studentNote}
+              onChange={(e) => setStudentNote(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
           </div>
 
           {studentClass === "PRE_CLARITY" && (

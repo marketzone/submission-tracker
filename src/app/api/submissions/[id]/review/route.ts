@@ -111,6 +111,7 @@ export async function PATCH(
           status,
           headCoachFeedback: approved ? null : feedback,
           headReviewedAt: new Date(),
+          returnedByHeadCoach: !approved && sendToStudent ? true : false,
         },
         include: {
           student: { select: { name: true, email: true } },
