@@ -106,11 +106,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Re-check active status directly from DB — the JWT may be stale
-    // (middleware runs on Edge and cannot use Prisma to refresh it)
+    // Re-check active status and class directly from DB — the JWT may be stale
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { active: true },
+      select: { active: true, studentClass: true },
     })
     if (!dbUser?.active) {
       return NextResponse.json({ error: "Your account is deactivated. You cannot submit." }, { status: 403 })
@@ -119,21 +118,41 @@ export async function POST(request: Request) {
     const { workbookTitle, workbookUrl, weekNumber, coachId, studentNote } =
       await request.json()
 
-    // Validate required fields (weekNumber can be 0 for Pre-Clarity Week)
-    if (!workbookTitle || !workbookUrl || typeof weekNumber !== 'number' || !coachId) {
+    const isLaunchClass = dbUser.studentClass === "LAUNCH_CLASS"
+
+    // Validate required fields (coachId optional for LAUNCH_CLASS students)
+    if (!workbookTitle || !workbookUrl || typeof weekNumber !== 'number' || (!isLaunchClass && !coachId)) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       )
     }
 
-    // Verify coach exists
-    const coach = await prisma.user.findUnique({
-      where: { id: coachId, role: "COACH" },
-    })
+    let resolvedCoachId: string
+    let submissionStatus: string
+    let headCoachId: string | null = null
 
-    if (!coach) {
-      return NextResponse.json({ error: "Invalid coach" }, { status: 400 })
+    if (isLaunchClass) {
+      // LAUNCH_CLASS: bypass coaches, assign directly to head coach
+      const headCoach = await prisma.user.findFirst({
+        where: { role: "HEAD_COACH", active: true },
+      })
+      if (!headCoach) {
+        return NextResponse.json({ error: "No head coach available" }, { status: 400 })
+      }
+      resolvedCoachId = headCoach.id
+      headCoachId = headCoach.id
+      submissionStatus = "HEAD_COACH_REVIEW"
+    } else {
+      // Verify coach exists
+      const coach = await prisma.user.findUnique({
+        where: { id: coachId, role: "COACH" },
+      })
+      if (!coach) {
+        return NextResponse.json({ error: "Invalid coach" }, { status: 400 })
+      }
+      resolvedCoachId = coachId
+      submissionStatus = "PENDING"
     }
 
     // Create submission
@@ -143,13 +162,15 @@ export async function POST(request: Request) {
         workbookTitle,
         workbookUrl,
         weekNumber,
-        coachId,
-        status: "PENDING",
+        coachId: resolvedCoachId,
+        headCoachId,
+        status: submissionStatus,
         studentNote: studentNote || null,
       },
       include: {
         student: { select: { name: true, email: true } },
         coach: { select: { name: true, email: true } },
+        headCoach: { select: { name: true, email: true } },
       },
     })
 
@@ -165,17 +186,32 @@ export async function POST(request: Request) {
       html: studentEmail.html,
     })
 
-    const coachEmail = emailTemplates.newReviewRequest(
-      submission.coach.name,
-      submission.student.name,
-      workbookTitle,
-      weekNumber
-    )
-    await sendEmail({
-      to: submission.coach.email,
-      subject: coachEmail.subject,
-      html: coachEmail.html,
-    })
+    if (isLaunchClass && submission.headCoach) {
+      // Notify head coach directly
+      const hcEmail = emailTemplates.newReviewRequest(
+        submission.headCoach.name,
+        submission.student.name,
+        workbookTitle,
+        weekNumber
+      )
+      await sendEmail({
+        to: submission.headCoach.email,
+        subject: hcEmail.subject,
+        html: hcEmail.html,
+      })
+    } else {
+      const coachEmail = emailTemplates.newReviewRequest(
+        submission.coach.name,
+        submission.student.name,
+        workbookTitle,
+        weekNumber
+      )
+      await sendEmail({
+        to: submission.coach.email,
+        subject: coachEmail.subject,
+        html: coachEmail.html,
+      })
+    }
 
     return NextResponse.json({ submission }, { status: 201 })
   } catch (error) {

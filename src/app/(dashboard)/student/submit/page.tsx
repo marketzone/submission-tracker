@@ -259,25 +259,34 @@ export default function SubmitWorkbookPage() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="coach" className="text-sm font-medium">Submit to Coach</Label>
-            <Select value={coachId} onValueChange={setCoachId} required>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select a coach" />
-              </SelectTrigger>
-              <SelectContent>
-                {coaches.map((coach) => (
-                  <SelectItem key={coach.id} value={coach.id}>{coach.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {studentClass === "LAUNCH_CLASS" ? (
+            <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3 text-sm text-indigo-800">
+              <span className="font-medium">Launch Class:</span> Your submission goes directly to the Head Coach — no coach selection needed.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="coach" className="text-sm font-medium">Submit to Coach</Label>
+              <Select value={coachId} onValueChange={setCoachId} required>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select a coach" />
+                </SelectTrigger>
+                <SelectContent>
+                  {coaches.map((coach) => (
+                    <SelectItem key={coach.id} value={coach.id}>{coach.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="studentNote" className="text-sm font-medium">Note to Coach <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Label htmlFor="studentNote" className="text-sm font-medium">
+              Note to {studentClass === "LAUNCH_CLASS" ? "Head Coach" : "Coach"}{" "}
+              <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
             <Textarea
               id="studentNote"
-              placeholder="Add any context or information your coach should know before reviewing..."
+              placeholder={`Add any context or information your ${studentClass === "LAUNCH_CLASS" ? "head coach" : "coach"} should know before reviewing...`}
               value={studentNote}
               onChange={(e) => setStudentNote(e.target.value)}
               rows={3}
@@ -290,7 +299,6 @@ export default function SubmitWorkbookPage() {
               You will be asked to confirm you have completed the internal GPT review before your submission is sent to your coach.
             </div>
           )}
-
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
               {error}
