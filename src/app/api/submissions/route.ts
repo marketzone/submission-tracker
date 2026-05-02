@@ -129,7 +129,6 @@ export async function POST(request: Request) {
     }
 
     let resolvedCoachId: string
-    let submissionStatus: "PENDING" | "HEAD_COACH_REVIEW"
     let headCoachId: string | null = null
 
     if (isLaunchClass) {
@@ -142,7 +141,6 @@ export async function POST(request: Request) {
       }
       resolvedCoachId = headCoach.id
       headCoachId = headCoach.id
-      submissionStatus = "HEAD_COACH_REVIEW"
     } else {
       // Verify coach exists
       const coach = await prisma.user.findUnique({
@@ -152,7 +150,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid coach" }, { status: 400 })
       }
       resolvedCoachId = coachId
-      submissionStatus = "PENDING"
     }
 
     // Create submission
@@ -164,7 +161,7 @@ export async function POST(request: Request) {
         weekNumber,
         coachId: resolvedCoachId,
         headCoachId,
-        status: submissionStatus,
+        status: isLaunchClass ? "HEAD_COACH_REVIEW" : "PENDING",
         studentNote: studentNote || null,
       },
       include: {
