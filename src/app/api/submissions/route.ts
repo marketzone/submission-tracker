@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     }
 
     let resolvedCoachId: string
-    let submissionStatus: string
+    let submissionStatus: "PENDING" | "HEAD_COACH_REVIEW"
     let headCoachId: string | null = null
 
     if (isLaunchClass) {
