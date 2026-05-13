@@ -64,7 +64,7 @@ export async function GET(request: Request) {
             status: (status as any) || "HEAD_COACH_REVIEW",
           },
           include: {
-            student: { select: { name: true, email: true } },
+            student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchEventTopic: true } },
             coach: { select: { name: true, email: true } },
           },
           orderBy: { createdAt: "desc" },

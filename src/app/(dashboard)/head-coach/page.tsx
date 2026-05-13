@@ -14,7 +14,7 @@ interface Submission {
   status: string
   studentNote?: string | null
   coachFeedback?: string | null
-  student: { name: string; email: string }
+  student: { name: string; email: string; studentClass?: string | null; launchStrategy?: string | null; launchEventTopic?: string | null }
   coach: { name: string; email: string }
   submittedAt: string
   reviewedAt?: string | null
@@ -84,6 +84,7 @@ export default function HeadCoachDashboard() {
   const [feedback, setFeedback] = useState("")
   const [activeTab, setActiveTab] = useState<Tab>("reviews")
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
+  const [expandedLaunchId, setExpandedLaunchId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -345,6 +346,40 @@ export default function HeadCoachDashboard() {
                           Submitted {new Date(submission.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           {submission.reviewedAt && ` · Coach reviewed ${new Date(submission.reviewedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
                         </p>
+
+                        {(submission.student.launchStrategy || submission.student.launchEventTopic) && (
+                          <div className="mt-3">
+                            <button
+                              onClick={() => setExpandedLaunchId(expandedLaunchId === submission.id ? null : submission.id)}
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 hover:text-indigo-900 transition-colors"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {expandedLaunchId === submission.id ? "Hide launch info" : "View launch info"}
+                              <svg className={`h-3 w-3 transition-transform ${expandedLaunchId === submission.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            {expandedLaunchId === submission.id && (
+                              <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-200 p-3 space-y-1.5">
+                                <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-1">Launch Information</p>
+                                {submission.student.launchStrategy && (
+                                  <p className="text-sm">
+                                    <span className="font-medium text-indigo-900">Strategy: </span>
+                                    <span className="text-indigo-800">{submission.student.launchStrategy}</span>
+                                  </p>
+                                )}
+                                {submission.student.launchEventTopic && (
+                                  <p className="text-sm">
+                                    <span className="font-medium text-indigo-900">Event Topic: </span>
+                                    <span className="text-indigo-800">{submission.student.launchEventTopic}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {submission.studentNote && (
                           <div className="mt-3 rounded-lg bg-sky-50 border border-sky-200 p-3">
