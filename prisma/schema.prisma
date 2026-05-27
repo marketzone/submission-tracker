@@ -24,8 +24,10 @@ model User {
   launchPricing    String?       // For students: pricing model (FREE, PWYW, LOW_TICKET)
   launchPrice      String?       // For students: price if PWYW or Low Ticket
   launchEventTopic String?       // For students: content direction for launch event
-  approvedEventTitle String?     // Set by PM/coach after approval
-  niche            String?       // Set by program manager (e.g. Level 5 Niche)
+  approvedEventTitle  String?     // Set by PM/coach after approval
+  launchInfoStatus    String?     // null | PENDING_REVIEW | APPROVED | NEEDS_REVISION
+  launchInfoFeedback  String?     // Head coach feedback when NEEDS_REVISION
+  niche               String?     // Set by program manager (e.g. Level 5 Niche)
   resetToken       String?       // For password reset
   resetTokenExpiry DateTime?     // Token expiration time
   coachId          String?       // For students: their assigned coach

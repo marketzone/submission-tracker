@@ -98,6 +98,8 @@ export default function StudentDashboard() {
   const [launchEventTopic, setLaunchEventTopic] = useState("")
   const [approvedEventTitle, setApprovedEventTitle] = useState("")
   const [studentClass, setStudentClass] = useState<string | null>(null)
+  const [launchInfoStatus, setLaunchInfoStatus] = useState<string | null>(null)
+  const [launchInfoFeedback, setLaunchInfoFeedback] = useState<string | null>(null)
   const [savingLaunchInfo, setSavingLaunchInfo] = useState(false)
   const [saveLaunchSuccess, setSaveLaunchSuccess] = useState(false)
 
@@ -134,6 +136,8 @@ export default function StudentDashboard() {
       setLaunchPrice(data.launchPrice || "")
       setLaunchEventTopic(data.launchEventTopic || "")
       setApprovedEventTitle(data.approvedEventTitle || "")
+      setLaunchInfoStatus(data.launchInfoStatus || null)
+      setLaunchInfoFeedback(data.launchInfoFeedback || null)
       setStudentClass(data.studentClass || null)
 
       if (data.studentClass === "STRATEGY_CLASS") {
@@ -196,6 +200,8 @@ export default function StudentDashboard() {
       })
       if (response.ok) {
         setSaveLaunchSuccess(true)
+        setLaunchInfoStatus("PENDING_REVIEW")
+        setLaunchInfoFeedback(null)
         setTimeout(() => setSaveLaunchSuccess(false), 3000)
       } else {
         const data = await response.json()
@@ -221,6 +227,143 @@ export default function StudentDashboard() {
       console.error("Error resubmitting:", error)
       alert("An error occurred")
     }
+  }
+
+  const GATED_CLASSES = ["STRATEGY_CLASS", "FUNNEL_CLASS"]
+  const isLaunchInfoGated =
+    studentClass !== null &&
+    GATED_CLASSES.includes(studentClass) &&
+    launchInfoStatus !== "PENDING_REVIEW" &&
+    launchInfoStatus !== "APPROVED"
+
+  if (isLaunchInfoGated) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Complete Your Launch Information</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Fill in your launch details below to continue</p>
+        </div>
+
+        {launchInfoStatus === "NEEDS_REVISION" && launchInfoFeedback && (
+          <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+            <p className="text-xs font-semibold text-red-800 uppercase tracking-wide mb-1">Revision Requested by Head Coach</p>
+            <p className="text-sm text-red-900">{launchInfoFeedback}</p>
+          </div>
+        )}
+
+        {launchInfoStatus === "NEEDS_REVISION" && !launchInfoFeedback && (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+            <p className="text-sm text-amber-900 font-medium">Your launch information needs to be updated. Please review and resubmit below.</p>
+          </div>
+        )}
+
+        {launchInfoStatus === null && (
+          <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4">
+            <p className="text-sm text-indigo-900 font-medium">
+              Before you can access your dashboard, please fill in your launch information. Once submitted, the head coach will review and approve it.
+            </p>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Launch Information</CardTitle>
+            <CardDescription className="text-sm">Be as specific as possible with each field</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Launch Strategy <span className="text-destructive">*</span></Label>
+              <Select value={launchStrategy} onValueChange={setLaunchStrategy}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select your launch format..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Webinar">Webinar</SelectItem>
+                  <SelectItem value="Workshop">Workshop</SelectItem>
+                  <SelectItem value="3 Days Challenge">3 Days Challenge</SelectItem>
+                  <SelectItem value="5 Days Challenge">5 Days Challenge</SelectItem>
+                  <SelectItem value="Weekend Bootcamp">Weekend Bootcamp</SelectItem>
+                  <SelectItem value="Evergreen VSL">Evergreen VSL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {launchStrategy && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Pricing Model <span className="text-destructive">*</span></Label>
+                <div className="flex flex-wrap gap-2">
+                  {["Free", "Pay What You Want", "Low Ticket"].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => { setLaunchPricing(option); if (option === "Free") setLaunchPrice("") }}
+                      className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                        launchPricing === option
+                          ? "border-primary bg-primary/5 text-primary shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-muted/30 text-foreground"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {(launchPricing === "Pay What You Want" || launchPricing === "Low Ticket") && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-muted-foreground shrink-0">Price:</span>
+                    <div className="relative w-36">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        placeholder="e.g. 47"
+                        value={launchPrice}
+                        onChange={(e) => setLaunchPrice(e.target.value)}
+                        className="h-9 pl-7 w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="launchEventTopicGate" className="text-sm font-medium">
+                Content Direction for the Launch Event <span className="text-destructive">*</span>
+              </Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">Be as detailed as possible — describe what your audience will learn, the problem you&apos;re solving, and the transformation you&apos;re promising.</p>
+              <Textarea
+                id="launchEventTopicGate"
+                placeholder="Describe the content direction for your launch event in detail..."
+                value={launchEventTopic}
+                onChange={(e) => setLaunchEventTopic(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <Button onClick={saveLaunchInfo} disabled={savingLaunchInfo}>
+                {savingLaunchInfo ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Submitting...
+                  </span>
+                ) : "Submit for Review"}
+              </Button>
+              {saveLaunchSuccess && (
+                <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Submitted for review
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -359,8 +502,23 @@ export default function StudentDashboard() {
       {studentClass && ALLOWED_CLASSES.includes(studentClass) && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Launch Information</CardTitle>
-            <CardDescription className="text-sm">Fill in your launch details below — be as specific as possible</CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold">Launch Information</CardTitle>
+                <CardDescription className="text-sm">Fill in your launch details below — be as specific as possible</CardDescription>
+              </div>
+              {launchInfoStatus && (
+                <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                  launchInfoStatus === "APPROVED"
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                    : launchInfoStatus === "PENDING_REVIEW"
+                    ? "bg-amber-100 text-amber-700 border-amber-200"
+                    : "bg-red-100 text-red-700 border-red-200"
+                }`}>
+                  {launchInfoStatus === "APPROVED" ? "Approved" : launchInfoStatus === "PENDING_REVIEW" ? "Under Review" : "Needs Revision"}
+                </span>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-5">
 

@@ -33,6 +33,7 @@ export default function SubmitWorkbookPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [studentClass, setStudentClass] = useState<string | null>(null)
+  const [launchInfoBlocked, setLaunchInfoBlocked] = useState(false)
   const [step, setStep] = useState<Step>("form")
 
   useEffect(() => {
@@ -43,7 +44,15 @@ export default function SubmitWorkbookPage() {
 
     fetch("/api/users/launch-info")
       .then((res) => res.json())
-      .then((data) => setStudentClass(data.studentClass || null))
+      .then((data) => {
+        const cls = data.studentClass || null
+        setStudentClass(cls)
+        const gatedClasses = ["STRATEGY_CLASS", "FUNNEL_CLASS"]
+        const status = data.launchInfoStatus || null
+        if (cls && gatedClasses.includes(cls) && status !== "PENDING_REVIEW" && status !== "APPROVED") {
+          setLaunchInfoBlocked(true)
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -89,6 +98,34 @@ export default function SubmitWorkbookPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Launch info gate
+  if (launchInfoBlocked) {
+    return (
+      <div className="max-w-lg mx-auto space-y-4">
+        <Link href="/student" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Back to dashboard
+        </Link>
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+            <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Launch Information Required</h2>
+          <p className="text-sm text-muted-foreground">
+            You need to complete and submit your launch information before you can submit workbooks. Go back to your dashboard to fill it in.
+          </p>
+          <Link href="/student">
+            <Button className="w-full">Complete Launch Information</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   // GPT Confirmation step

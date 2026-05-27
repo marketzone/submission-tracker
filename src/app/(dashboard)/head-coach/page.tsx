@@ -27,6 +27,21 @@ interface DashboardStats {
   pendingFinalReview: number
 }
 
+interface LaunchInfoStudent {
+  id: string
+  name: string
+  email: string
+  studentClass: string | null
+  launchStrategy: string | null
+  launchPricing: string | null
+  launchPrice: string | null
+  launchEventTopic: string | null
+  approvedEventTitle: string | null
+  niche: string | null
+  launchInfoStatus: string | null
+  updatedAt: string
+}
+
 interface PendingUser {
   id: string
   name: string
@@ -72,7 +87,7 @@ function StatCard({ label, value, valueClass }: { label: string; value: string |
   )
 }
 
-type Tab = "reviews" | "approvals" | "staff"
+type Tab = "reviews" | "launch-info" | "approvals" | "staff"
 
 export default function HeadCoachDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -85,6 +100,10 @@ export default function HeadCoachDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("reviews")
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [expandedLaunchId, setExpandedLaunchId] = useState<string | null>(null)
+  const [launchInfoStudents, setLaunchInfoStudents] = useState<LaunchInfoStudent[]>([])
+  const [reviewingLaunchId, setReviewingLaunchId] = useState<string | null>(null)
+  const [launchFeedback, setLaunchFeedback] = useState("")
+  const [processingLaunchReview, setProcessingLaunchReview] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -92,23 +111,53 @@ export default function HeadCoachDashboard() {
 
   const fetchData = async () => {
     try {
-      const [submissionsRes, statsRes, pendingRes, staffRes] = await Promise.all([
+      const [submissionsRes, statsRes, pendingRes, staffRes, launchInfoRes] = await Promise.all([
         fetch("/api/submissions"),
         fetch("/api/stats"),
         fetch("/api/users/pending"),
         fetch("/api/users/staff"),
+        fetch("/api/users/launch-info-reviews"),
       ])
-      const [submissionsData, statsData, pendingData, staffData] = await Promise.all([
-        submissionsRes.json(), statsRes.json(), pendingRes.json(), staffRes.json(),
+      const [submissionsData, statsData, pendingData, staffData, launchInfoData] = await Promise.all([
+        submissionsRes.json(), statsRes.json(), pendingRes.json(), staffRes.json(), launchInfoRes.json(),
       ])
       setSubmissions(submissionsData.submissions || [])
       setStats(statsData)
       setPendingUsers(pendingData.users || [])
       setStaff(staffData.staff || [])
+      setLaunchInfoStudents(launchInfoData.students || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleLaunchInfoReview = async (studentId: string, action: "approve" | "revise") => {
+    if (action === "revise" && !launchFeedback.trim()) {
+      alert("Please provide feedback when requesting revisions")
+      return
+    }
+    setProcessingLaunchReview(studentId)
+    try {
+      const res = await fetch(`/api/users/${studentId}/review-launch-info`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, feedback: launchFeedback.trim() || undefined }),
+      })
+      if (res.ok) {
+        setReviewingLaunchId(null)
+        setLaunchFeedback("")
+        setLaunchInfoStudents((prev) => prev.filter((s) => s.id !== studentId))
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to submit review")
+      }
+    } catch (error) {
+      console.error("Error reviewing launch info:", error)
+      alert("An error occurred")
+    } finally {
+      setProcessingLaunchReview(null)
     }
   }
 
@@ -221,9 +270,17 @@ export default function HeadCoachDashboard() {
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "reviews", label: "Final Reviews", badge: stats?.pendingFinalReview },
+    { key: "launch-info", label: "Launch Info", badge: launchInfoStudents.length },
     { key: "approvals", label: "User Approvals", badge: pendingUsers.length },
     { key: "staff", label: "Manage Staff" },
   ]
+
+  const CLASS_LABELS: Record<string, string> = {
+    PRE_CLARITY: "Pre-Clarity",
+    STRATEGY_CLASS: "Strategy Class",
+    FUNNEL_CLASS: "Funnel Class",
+    LAUNCH_CLASS: "Launch Class",
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -448,6 +505,136 @@ export default function HeadCoachDashboard() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Launch Info tab */}
+      {activeTab === "launch-info" && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Launch Info Reviews</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Review and approve launch information submitted by students</p>
+          </div>
+
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-border p-5 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-2/3 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2 mb-4" />
+                  <div className="h-8 bg-muted rounded w-40" />
+                </div>
+              ))}
+            </div>
+          ) : launchInfoStudents.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-white py-12 text-center">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 mb-3">
+                <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-foreground">No pending reviews</p>
+              <p className="text-sm text-muted-foreground mt-1">All launch info submissions have been reviewed</p>
+            </div>
+          ) : (
+            launchInfoStudents.map((student) => (
+              <div key={student.id} className="bg-white rounded-xl border border-border shadow-sm">
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground">{student.name}</h3>
+                      <p className="text-sm text-muted-foreground">{student.email}</p>
+                      {student.studentClass && (
+                        <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 mt-1">
+                          {CLASS_LABELS[student.studentClass] ?? student.studentClass}
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                      Pending Review
+                    </span>
+                  </div>
+
+                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3 space-y-1.5 mt-3">
+                    <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-1">Launch Information</p>
+                    {student.niche && (
+                      <p className="text-sm"><span className="font-medium text-indigo-900">Niche: </span><span className="text-indigo-800">{student.niche}</span></p>
+                    )}
+                    {student.launchStrategy && (
+                      <p className="text-sm">
+                        <span className="font-medium text-indigo-900">Strategy: </span>
+                        <span className="text-indigo-800">
+                          {student.launchStrategy}
+                          {student.launchPricing && ` — ${student.launchPricing}${student.launchPrice ? ` ($${student.launchPrice})` : ""}`}
+                        </span>
+                      </p>
+                    )}
+                    {student.launchEventTopic && (
+                      <p className="text-sm"><span className="font-medium text-indigo-900">Content Direction: </span><span className="text-indigo-800">{student.launchEventTopic}</span></p>
+                    )}
+                  </div>
+
+                  {reviewingLaunchId === student.id ? (
+                    <div className="mt-4 space-y-3 border-t border-border pt-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`launch-feedback-${student.id}`} className="text-sm font-medium">Revision Feedback</Label>
+                        <Textarea
+                          id={`launch-feedback-${student.id}`}
+                          placeholder="Explain what needs to be changed..."
+                          value={launchFeedback}
+                          onChange={(e) => setLaunchFeedback(e.target.value)}
+                          rows={3}
+                          className="resize-none"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => handleLaunchInfoReview(student.id, "revise")}
+                          disabled={processingLaunchReview === student.id}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          {processingLaunchReview === student.id ? "Submitting..." : "Request Revision"}
+                        </Button>
+                        <Button
+                          onClick={() => { setReviewingLaunchId(null); setLaunchFeedback("") }}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        onClick={() => handleLaunchInfoReview(student.id, "approve")}
+                        disabled={processingLaunchReview === student.id}
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        {processingLaunchReview === student.id ? "Approving..." : "Approve"}
+                      </Button>
+                      <Button
+                        onClick={() => { setReviewingLaunchId(student.id); setLaunchFeedback("") }}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1.5"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                        </svg>
+                        Request Revision
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
