@@ -90,14 +90,22 @@ model Submission {
   headCoachFeedback     String?
   returnedByHeadCoach   Boolean          @default(false) // True when head coach sent back to student
   submittedAt           DateTime         @default(now())
-  reviewedAt            DateTime?
+  reviewedAt            DateTime?        // Coach manual review timestamp (existing)
   headReviewedAt        DateTime?
+  // AI review fields — parallel to manual review, never replaces it
+  aiReviewStatus        AiReviewStatus   @default(PENDING)
+  aiNicheAlignment      String?          // pass | drifting | off
+  aiFeedback            Json?            // Full JSON output from the reviewer
+  aiTriageVerdict       String?          // proceed | hold
+  aiReviewedAt          DateTime?        // When AI processed this submission
+  reviewModelVersion    String?          // e.g. "claude-opus-4-7"
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
   @@index([studentId])
   @@index([coachId])
   @@index([status])
+  @@index([aiReviewStatus])
 }
 
 enum SubmissionStatus {
@@ -106,4 +114,43 @@ enum SubmissionStatus {
   HEAD_COACH_REVIEW // Approved by coach, awaiting head coach
   APPROVED          // Final approval
   NEEDS_CORRECTION  // Coach or head coach requested changes
+}
+
+// ── Week criteria (AI reviewer rubric store) ─────────────────────────────────
+// Static lookup table. One row per (week_number, launch_strategy, template_variant)
+// combination. launch_strategy = null means the row applies to all strategies.
+// template_variant distinguishes same-week deliverables (Week 3 ad_copy vs
+// ad_video) and Week 6 sales-copy variants (long_form, desire_stack,
+// three_step_even_if). See prisma/seed.ts for all 16 rows.
+model WeekCriteria {
+  id              String   @id @default(cuid())
+  weekNumber      Int
+  // 'free_event' | 'pwyw_or_low_ticket' | 'evergreen' | null (null = all strategies)
+  launchStrategy  String?
+  deliverableName String
+  // Disambiguates deliverables within a week: 'aida' | 'storytelling' |
+  // 'ad_copy' | 'ad_video' | 'long_form' | 'desire_stack' |
+  // 'three_step_even_if' | 'webinar' | null
+  templateVariant String?
+  // Full verbatim pattern text from the rubric doc — up to ~5KB per row.
+  // PostgreSQL TEXT has no size limit; Prisma String maps to TEXT.
+  templatePattern String
+  sourceDocUrl    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([weekNumber, launchStrategy])
+  @@map("week_criteria")
+}
+
+// ── AI review status ──────────────────────────────────────────────────────────
+// Runs in parallel with the manual review workflow. PENDING = not yet reviewed
+// by AI. AUTO_APPROVED = AI verdict proceed, no human review needed.
+// HELD_FOR_HUMAN = AI flagged for Mayowa's review. HUMAN_REVIEWED = Mayowa
+// has reviewed the AI output and taken action.
+enum AiReviewStatus {
+  PENDING
+  AUTO_APPROVED
+  HELD_FOR_HUMAN
+  HUMAN_REVIEWED
 }
