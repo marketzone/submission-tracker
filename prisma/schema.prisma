@@ -22,6 +22,7 @@ model User {
   studentClass     StudentClass? // For students: assigned class
   launchStrategy   String?       // For students: their launch strategy
   launchEventTopic String?       // For students: their launch event topic
+  niche            String?       // Set by program manager (e.g. Level 5 Niche)
   resetToken       String?       // For password reset
   resetTokenExpiry DateTime?     // Token expiration time
   coachId          String?       // For students: their assigned coach

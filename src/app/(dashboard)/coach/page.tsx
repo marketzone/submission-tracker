@@ -23,6 +23,7 @@ interface Submission {
     studentClass?: string | null
     launchStrategy?: string | null
     launchEventTopic?: string | null
+    niche?: string | null
   }
   submittedAt: string
 }
@@ -241,7 +242,7 @@ export default function CoachDashboard() {
                     Submitted {new Date(submission.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
 
-                  {(submission.student.launchStrategy || submission.student.launchEventTopic) && (
+                  {(submission.student.launchStrategy || submission.student.launchEventTopic || submission.student.niche) && (
                     <div className="mt-3">
                       <button
                         onClick={() => setExpandedLaunchId(expandedLaunchId === submission.id ? null : submission.id)}
@@ -258,6 +259,12 @@ export default function CoachDashboard() {
                       {expandedLaunchId === submission.id && (
                         <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-200 p-3 space-y-1.5">
                           <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-1">Launch Information</p>
+                          {submission.student.niche && (
+                            <p className="text-sm">
+                              <span className="font-medium text-indigo-900">Niche: </span>
+                              <span className="text-indigo-800">{submission.student.niche}</span>
+                            </p>
+                          )}
                           {submission.student.launchStrategy && (
                             <p className="text-sm">
                               <span className="font-medium text-indigo-900">Strategy: </span>

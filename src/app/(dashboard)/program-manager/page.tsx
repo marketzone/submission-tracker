@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ interface Student {
   coachId?: string | null
   launchStrategy?: string | null
   launchEventTopic?: string | null
+  niche?: string | null
   coach?: {
     id: string
     name: string
@@ -89,6 +91,9 @@ export default function ProgramManagerPage() {
   const [reassigningSubmissionId, setReassigningSubmissionId] = useState<string | null>(null)
   const [reassignCoachValue, setReassignCoachValue] = useState("")
   const [reassignSaving, setReassignSaving] = useState(false)
+  const [editingLaunchId, setEditingLaunchId] = useState<string | null>(null)
+  const [launchEditValues, setLaunchEditValues] = useState<{ niche: string; launchStrategy: string; launchEventTopic: string }>({ niche: "", launchStrategy: "", launchEventTopic: "" })
+  const [launchSaving, setLaunchSaving] = useState(false)
 
   // Filters for submissions
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -338,6 +343,35 @@ export default function ProgramManagerPage() {
       alert("An error occurred.")
     } finally {
       setReassignSaving(false)
+    }
+  }
+
+  const handleSaveLaunchInfo = async (studentId: string) => {
+    setLaunchSaving(true)
+    try {
+      const res = await fetch(`/api/users/${studentId}/update-launch-info`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(launchEditValues),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === studentId
+              ? { ...s, niche: data.student.niche, launchStrategy: data.student.launchStrategy, launchEventTopic: data.student.launchEventTopic }
+              : s
+          )
+        )
+        setEditingLaunchId(null)
+      } else {
+        const data = await res.json()
+        alert(`Failed to save: ${data.error || "Unknown error"}`)
+      }
+    } catch {
+      alert("An error occurred.")
+    } finally {
+      setLaunchSaving(false)
     }
   }
 
@@ -722,22 +756,85 @@ export default function ProgramManagerPage() {
                               Coach: {student.coach.name}
                             </p>
                           )}
-                          {(student.launchStrategy || student.launchEventTopic) && (
-                            <div className="mt-2 rounded-md bg-indigo-50 p-2 space-y-1">
-                              {student.launchStrategy && (
-                                <p className="text-xs">
-                                  <span className="font-medium text-indigo-900">Launch Strategy:</span>{" "}
-                                  <span className="text-indigo-800">{student.launchStrategy}</span>
-                                </p>
-                              )}
-                              {student.launchEventTopic && (
-                                <p className="text-xs">
-                                  <span className="font-medium text-indigo-900">Launch Event Topic:</span>{" "}
-                                  <span className="text-indigo-800">{student.launchEventTopic}</span>
-                                </p>
-                              )}
-                            </div>
-                          )}
+                          <div className="mt-2">
+                            {editingLaunchId === student.id ? (
+                              <div className="rounded-md bg-indigo-50 border border-indigo-200 p-3 space-y-2">
+                                <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Launch Information</p>
+                                <div>
+                                  <label className="text-xs font-medium text-indigo-900 block mb-1">Niche</label>
+                                  <Input
+                                    value={launchEditValues.niche}
+                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, niche: e.target.value }))}
+                                    placeholder="e.g. Level 5 Niche — Fitness for Busy Moms"
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-indigo-900 block mb-1">Launch Strategy</label>
+                                  <Input
+                                    value={launchEditValues.launchStrategy}
+                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchStrategy: e.target.value }))}
+                                    placeholder="e.g. Social Media Launch"
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-indigo-900 block mb-1">Event Topic</label>
+                                  <Input
+                                    value={launchEditValues.launchEventTopic}
+                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchEventTopic: e.target.value }))}
+                                    placeholder="e.g. How to Get Your First 10 Clients"
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSaveLaunchInfo(student.id)} disabled={launchSaving}>
+                                    {launchSaving ? "Saving…" : "Save"}
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => setEditingLaunchId(null)}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="rounded-md bg-indigo-50 border border-indigo-100 p-2 space-y-1">
+                                {student.niche && (
+                                  <p className="text-xs">
+                                    <span className="font-medium text-indigo-900">Niche:</span>{" "}
+                                    <span className="text-indigo-800">{student.niche}</span>
+                                  </p>
+                                )}
+                                {student.launchStrategy && (
+                                  <p className="text-xs">
+                                    <span className="font-medium text-indigo-900">Launch Strategy:</span>{" "}
+                                    <span className="text-indigo-800">{student.launchStrategy}</span>
+                                  </p>
+                                )}
+                                {student.launchEventTopic && (
+                                  <p className="text-xs">
+                                    <span className="font-medium text-indigo-900">Event Topic:</span>{" "}
+                                    <span className="text-indigo-800">{student.launchEventTopic}</span>
+                                  </p>
+                                )}
+                                {!student.niche && !student.launchStrategy && !student.launchEventTopic && (
+                                  <p className="text-xs text-indigo-500 italic">No launch info yet</p>
+                                )}
+                                <button
+                                  className="text-xs text-indigo-600 hover:text-indigo-800 underline underline-offset-2 mt-1 block"
+                                  onClick={() => {
+                                    setEditingLaunchId(student.id)
+                                    setLaunchEditValues({
+                                      niche: student.niche || "",
+                                      launchStrategy: student.launchStrategy || "",
+                                      launchEventTopic: student.launchEventTopic || "",
+                                    })
+                                  }}
+                                >
+                                  {(student.niche || student.launchStrategy || student.launchEventTopic) ? "Edit launch info" : "Add launch info"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className="bg-blue-100 text-blue-800">

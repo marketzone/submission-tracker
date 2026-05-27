@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         submissions = await prisma.submission.findMany({
           where: whereClause,
           include: {
-            student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchEventTopic: true } },
+            student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchEventTopic: true, niche: true } },
             headCoach: { select: { name: true, email: true } },
           },
           orderBy: { createdAt: "desc" },
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
             status: (status as any) || "HEAD_COACH_REVIEW",
           },
           include: {
-            student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchEventTopic: true } },
+            student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchEventTopic: true, niche: true } },
             coach: { select: { name: true, email: true } },
           },
           orderBy: { createdAt: "desc" },

@@ -33,6 +33,7 @@ export async function GET() {
         coachId: true,
         launchStrategy: true,
         launchEventTopic: true,
+        niche: true,
         coach: {
           select: {
             id: true,
