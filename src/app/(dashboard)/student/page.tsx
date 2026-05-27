@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Submission {
   id: string
@@ -91,7 +93,10 @@ export default function StudentDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const [launchStrategy, setLaunchStrategy] = useState("")
+  const [launchPricing, setLaunchPricing] = useState("")
+  const [launchPrice, setLaunchPrice] = useState("")
   const [launchEventTopic, setLaunchEventTopic] = useState("")
+  const [approvedEventTitle, setApprovedEventTitle] = useState("")
   const [studentClass, setStudentClass] = useState<string | null>(null)
   const [savingLaunchInfo, setSavingLaunchInfo] = useState(false)
   const [saveLaunchSuccess, setSaveLaunchSuccess] = useState(false)
@@ -125,7 +130,10 @@ export default function StudentDashboard() {
       const response = await fetch("/api/users/launch-info")
       const data = await response.json()
       setLaunchStrategy(data.launchStrategy || "")
+      setLaunchPricing(data.launchPricing || "")
+      setLaunchPrice(data.launchPrice || "")
       setLaunchEventTopic(data.launchEventTopic || "")
+      setApprovedEventTitle(data.approvedEventTitle || "")
       setStudentClass(data.studentClass || null)
 
       if (data.studentClass === "STRATEGY_CLASS") {
@@ -184,7 +192,7 @@ export default function StudentDashboard() {
       const response = await fetch("/api/users/launch-info", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ launchStrategy, launchEventTopic }),
+        body: JSON.stringify({ launchStrategy, launchPricing, launchPrice, launchEventTopic }),
       })
       if (response.ok) {
         setSaveLaunchSuccess(true)
@@ -352,30 +360,92 @@ export default function StudentDashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Launch Information</CardTitle>
-            <CardDescription className="text-sm">Record your launch strategy and event topic</CardDescription>
+            <CardDescription className="text-sm">Fill in your launch details below — be as specific as possible</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
+
+            {/* Launch Strategy — format dropdown */}
             <div className="space-y-1.5">
-              <Label htmlFor="launchStrategy" className="text-sm font-medium">Launch Strategy</Label>
-              <Input
-                id="launchStrategy"
-                placeholder="Enter your launch strategy..."
-                value={launchStrategy}
-                onChange={(e) => setLaunchStrategy(e.target.value)}
-                className="h-10"
-              />
+              <Label className="text-sm font-medium">Launch Strategy</Label>
+              <Select value={launchStrategy} onValueChange={setLaunchStrategy}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select your launch format..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Webinar">Webinar</SelectItem>
+                  <SelectItem value="Workshop">Workshop</SelectItem>
+                  <SelectItem value="3 Days Challenge">3 Days Challenge</SelectItem>
+                  <SelectItem value="5 Days Challenge">5 Days Challenge</SelectItem>
+                  <SelectItem value="Weekend Bootcamp">Weekend Bootcamp</SelectItem>
+                  <SelectItem value="Evergreen VSL">Evergreen VSL</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Pricing model — only shown when a format is selected */}
+            {launchStrategy && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Pricing Model</Label>
+                <div className="flex flex-wrap gap-2">
+                  {["Free", "Pay What You Want", "Low Ticket"].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => { setLaunchPricing(option); if (option === "Free") setLaunchPrice("") }}
+                      className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                        launchPricing === option
+                          ? "border-primary bg-primary/5 text-primary shadow-sm"
+                          : "border-border hover:border-primary/40 hover:bg-muted/30 text-foreground"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Price input — only for PWYW or Low Ticket */}
+                {(launchPricing === "Pay What You Want" || launchPricing === "Low Ticket") && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-sm text-muted-foreground shrink-0">Price:</span>
+                    <div className="relative w-36">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        placeholder="e.g. 47"
+                        value={launchPrice}
+                        onChange={(e) => setLaunchPrice(e.target.value)}
+                        className="h-9 pl-7 w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Content Direction */}
             <div className="space-y-1.5">
-              <Label htmlFor="launchEventTopic" className="text-sm font-medium">Launch Event Topic</Label>
-              <Input
+              <Label htmlFor="launchEventTopic" className="text-sm font-medium">
+                Content Direction for the Launch Event
+              </Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">Be as detailed as possible — describe what your audience will learn, the problem you&apos;re solving, and the transformation you&apos;re promising.</p>
+              <Textarea
                 id="launchEventTopic"
-                placeholder="Enter your launch event topic..."
+                placeholder="Describe the content direction for your launch event in detail..."
                 value={launchEventTopic}
                 onChange={(e) => setLaunchEventTopic(e.target.value)}
-                className="h-10"
+                rows={4}
+                className="resize-none"
               />
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Approved Event Title — read-only, set by coach */}
+            {approvedEventTitle && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wide mb-1">Approved Event Title by Coach Mayowa</p>
+                <p className="text-sm text-emerald-900 font-medium">{approvedEventTitle}</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-1">
               <Button onClick={saveLaunchInfo} disabled={savingLaunchInfo}>
                 {savingLaunchInfo ? (
                   <span className="flex items-center gap-2">
@@ -385,7 +455,7 @@ export default function StudentDashboard() {
                     </svg>
                     Saving...
                   </span>
-                ) : "Save"}
+                ) : "Save Launch Info"}
               </Button>
               {saveLaunchSuccess && (
                 <span className="text-sm text-emerald-600 font-medium flex items-center gap-1.5">

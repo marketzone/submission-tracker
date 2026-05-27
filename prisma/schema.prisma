@@ -20,8 +20,11 @@ model User {
   approved              Boolean       @default(false) // For approval workflow
   pendingDeactivation   Boolean       @default(false) // Flagged by cron, awaiting PM decision
   studentClass     StudentClass? // For students: assigned class
-  launchStrategy   String?       // For students: their launch strategy
-  launchEventTopic String?       // For students: their launch event topic
+  launchStrategy   String?       // For students: launch format (Webinar, Workshop, etc.)
+  launchPricing    String?       // For students: pricing model (FREE, PWYW, LOW_TICKET)
+  launchPrice      String?       // For students: price if PWYW or Low Ticket
+  launchEventTopic String?       // For students: content direction for launch event
+  approvedEventTitle String?     // Set by PM/coach after approval
   niche            String?       // Set by program manager (e.g. Level 5 Niche)
   resetToken       String?       // For password reset
   resetTokenExpiry DateTime?     // Token expiration time

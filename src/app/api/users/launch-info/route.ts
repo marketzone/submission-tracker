@@ -15,7 +15,10 @@ export async function GET() {
       where: { id: session.user.id },
       select: {
         launchStrategy: true,
+        launchPricing: true,
+        launchPrice: true,
         launchEventTopic: true,
+        approvedEventTitle: true,
         studentClass: true,
       },
     })
@@ -53,12 +56,14 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const { launchStrategy, launchEventTopic } = await request.json()
+    const { launchStrategy, launchPricing, launchPrice, launchEventTopic } = await request.json()
 
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         launchStrategy: launchStrategy || null,
+        launchPricing: launchPricing || null,
+        launchPrice: launchPrice || null,
         launchEventTopic: launchEventTopic || null,
       },
     })

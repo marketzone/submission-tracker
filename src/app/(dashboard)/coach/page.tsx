@@ -22,7 +22,10 @@ interface Submission {
     email: string
     studentClass?: string | null
     launchStrategy?: string | null
+    launchPricing?: string | null
+    launchPrice?: string | null
     launchEventTopic?: string | null
+    approvedEventTitle?: string | null
     niche?: string | null
   }
   submittedAt: string
@@ -260,22 +263,22 @@ export default function CoachDashboard() {
                         <div className="mt-2 rounded-lg bg-indigo-50 border border-indigo-200 p-3 space-y-1.5">
                           <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-1">Launch Information</p>
                           {submission.student.niche && (
-                            <p className="text-sm">
-                              <span className="font-medium text-indigo-900">Niche: </span>
-                              <span className="text-indigo-800">{submission.student.niche}</span>
-                            </p>
+                            <p className="text-sm"><span className="font-medium text-indigo-900">Niche: </span><span className="text-indigo-800">{submission.student.niche}</span></p>
                           )}
                           {submission.student.launchStrategy && (
                             <p className="text-sm">
                               <span className="font-medium text-indigo-900">Strategy: </span>
-                              <span className="text-indigo-800">{submission.student.launchStrategy}</span>
+                              <span className="text-indigo-800">
+                                {submission.student.launchStrategy}
+                                {submission.student.launchPricing && ` — ${submission.student.launchPricing}${submission.student.launchPrice ? ` ($${submission.student.launchPrice})` : ""}`}
+                              </span>
                             </p>
                           )}
                           {submission.student.launchEventTopic && (
-                            <p className="text-sm">
-                              <span className="font-medium text-indigo-900">Event Topic: </span>
-                              <span className="text-indigo-800">{submission.student.launchEventTopic}</span>
-                            </p>
+                            <p className="text-sm"><span className="font-medium text-indigo-900">Content Direction: </span><span className="text-indigo-800">{submission.student.launchEventTopic}</span></p>
+                          )}
+                          {submission.student.approvedEventTitle && (
+                            <p className="text-sm"><span className="font-medium text-emerald-800">Approved Title: </span><span className="text-emerald-700 font-medium">{submission.student.approvedEventTitle}</span></p>
                           )}
                         </div>
                       )}

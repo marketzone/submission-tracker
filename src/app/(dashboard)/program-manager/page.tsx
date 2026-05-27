@@ -48,7 +48,10 @@ interface Student {
   studentClass?: string | null
   coachId?: string | null
   launchStrategy?: string | null
+  launchPricing?: string | null
+  launchPrice?: string | null
   launchEventTopic?: string | null
+  approvedEventTitle?: string | null
   niche?: string | null
   coach?: {
     id: string
@@ -92,7 +95,7 @@ export default function ProgramManagerPage() {
   const [reassignCoachValue, setReassignCoachValue] = useState("")
   const [reassignSaving, setReassignSaving] = useState(false)
   const [editingLaunchId, setEditingLaunchId] = useState<string | null>(null)
-  const [launchEditValues, setLaunchEditValues] = useState<{ niche: string; launchStrategy: string; launchEventTopic: string }>({ niche: "", launchStrategy: "", launchEventTopic: "" })
+  const [launchEditValues, setLaunchEditValues] = useState<{ niche: string; launchStrategy: string; launchPricing: string; launchPrice: string; launchEventTopic: string; approvedEventTitle: string }>({ niche: "", launchStrategy: "", launchPricing: "", launchPrice: "", launchEventTopic: "", approvedEventTitle: "" })
   const [launchSaving, setLaunchSaving] = useState(false)
 
   // Filters for submissions
@@ -359,7 +362,7 @@ export default function ProgramManagerPage() {
         setStudents((prev) =>
           prev.map((s) =>
             s.id === studentId
-              ? { ...s, niche: data.student.niche, launchStrategy: data.student.launchStrategy, launchEventTopic: data.student.launchEventTopic }
+              ? { ...s, niche: data.student.niche, launchStrategy: data.student.launchStrategy, launchPricing: data.student.launchPricing, launchPrice: data.student.launchPrice, launchEventTopic: data.student.launchEventTopic, approvedEventTitle: data.student.approvedEventTitle }
               : s
           )
         )
@@ -759,64 +762,52 @@ export default function ProgramManagerPage() {
                           <div className="mt-2">
                             {editingLaunchId === student.id ? (
                               <div className="rounded-md bg-indigo-50 border border-indigo-200 p-3 space-y-2">
-                                <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Launch Information</p>
+                                <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide">Edit Launch Information</p>
                                 <div>
                                   <label className="text-xs font-medium text-indigo-900 block mb-1">Niche</label>
-                                  <Input
-                                    value={launchEditValues.niche}
-                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, niche: e.target.value }))}
-                                    placeholder="e.g. Level 5 Niche — Fitness for Busy Moms"
-                                    className="h-8 text-xs"
-                                  />
+                                  <Input value={launchEditValues.niche} onChange={(e) => setLaunchEditValues((v) => ({ ...v, niche: e.target.value }))} placeholder="e.g. Level 5 Niche — Fitness for Busy Moms" className="h-8 text-xs" />
                                 </div>
                                 <div>
                                   <label className="text-xs font-medium text-indigo-900 block mb-1">Launch Strategy</label>
-                                  <Input
-                                    value={launchEditValues.launchStrategy}
-                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchStrategy: e.target.value }))}
-                                    placeholder="e.g. Social Media Launch"
-                                    className="h-8 text-xs"
-                                  />
+                                  <Input value={launchEditValues.launchStrategy} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchStrategy: e.target.value }))} placeholder="e.g. Webinar, Workshop..." className="h-8 text-xs" />
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="flex-1">
+                                    <label className="text-xs font-medium text-indigo-900 block mb-1">Pricing Model</label>
+                                    <Input value={launchEditValues.launchPricing} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPricing: e.target.value }))} placeholder="Free / PWYW / Low Ticket" className="h-8 text-xs" />
+                                  </div>
+                                  <div className="w-28">
+                                    <label className="text-xs font-medium text-indigo-900 block mb-1">Price</label>
+                                    <Input value={launchEditValues.launchPrice} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPrice: e.target.value }))} placeholder="e.g. 47" className="h-8 text-xs" />
+                                  </div>
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-indigo-900 block mb-1">Event Topic</label>
-                                  <Input
-                                    value={launchEditValues.launchEventTopic}
-                                    onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchEventTopic: e.target.value }))}
-                                    placeholder="e.g. How to Get Your First 10 Clients"
-                                    className="h-8 text-xs"
-                                  />
+                                  <label className="text-xs font-medium text-indigo-900 block mb-1">Content Direction</label>
+                                  <Textarea value={launchEditValues.launchEventTopic} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchEventTopic: e.target.value }))} placeholder="Describe the content direction..." rows={2} className="text-xs resize-none" />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-emerald-800 block mb-1">✓ Approved Event Title By Coach Mayowa</label>
+                                  <Input value={launchEditValues.approvedEventTitle} onChange={(e) => setLaunchEditValues((v) => ({ ...v, approvedEventTitle: e.target.value }))} placeholder="Enter approved event title..." className="h-8 text-xs border-emerald-300 focus:ring-emerald-400" />
                                 </div>
                                 <div className="flex gap-2 pt-1">
                                   <Button size="sm" className="h-7 text-xs px-3 bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSaveLaunchInfo(student.id)} disabled={launchSaving}>
                                     {launchSaving ? "Saving…" : "Save"}
                                   </Button>
-                                  <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => setEditingLaunchId(null)}>
-                                    Cancel
-                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs px-3" onClick={() => setEditingLaunchId(null)}>Cancel</Button>
                                 </div>
                               </div>
                             ) : (
                               <div className="rounded-md bg-indigo-50 border border-indigo-100 p-2 space-y-1">
-                                {student.niche && (
-                                  <p className="text-xs">
-                                    <span className="font-medium text-indigo-900">Niche:</span>{" "}
-                                    <span className="text-indigo-800">{student.niche}</span>
-                                  </p>
-                                )}
+                                {student.niche && <p className="text-xs"><span className="font-medium text-indigo-900">Niche:</span> <span className="text-indigo-800">{student.niche}</span></p>}
                                 {student.launchStrategy && (
                                   <p className="text-xs">
-                                    <span className="font-medium text-indigo-900">Launch Strategy:</span>{" "}
-                                    <span className="text-indigo-800">{student.launchStrategy}</span>
+                                    <span className="font-medium text-indigo-900">Strategy:</span>{" "}
+                                    <span className="text-indigo-800">{student.launchStrategy}{student.launchPricing ? ` — ${student.launchPricing}${student.launchPrice ? ` ($${student.launchPrice})` : ""}` : ""}</span>
                                   </p>
                                 )}
-                                {student.launchEventTopic && (
-                                  <p className="text-xs">
-                                    <span className="font-medium text-indigo-900">Event Topic:</span>{" "}
-                                    <span className="text-indigo-800">{student.launchEventTopic}</span>
-                                  </p>
-                                )}
-                                {!student.niche && !student.launchStrategy && !student.launchEventTopic && (
+                                {student.launchEventTopic && <p className="text-xs"><span className="font-medium text-indigo-900">Content Direction:</span> <span className="text-indigo-800">{student.launchEventTopic}</span></p>}
+                                {student.approvedEventTitle && <p className="text-xs"><span className="font-medium text-emerald-800">Approved Title:</span> <span className="text-emerald-700 font-medium">{student.approvedEventTitle}</span></p>}
+                                {!student.niche && !student.launchStrategy && !student.launchEventTopic && !student.approvedEventTitle && (
                                   <p className="text-xs text-indigo-500 italic">No launch info yet</p>
                                 )}
                                 <button
@@ -826,11 +817,14 @@ export default function ProgramManagerPage() {
                                     setLaunchEditValues({
                                       niche: student.niche || "",
                                       launchStrategy: student.launchStrategy || "",
+                                      launchPricing: student.launchPricing || "",
+                                      launchPrice: student.launchPrice || "",
                                       launchEventTopic: student.launchEventTopic || "",
+                                      approvedEventTitle: student.approvedEventTitle || "",
                                     })
                                   }}
                                 >
-                                  {(student.niche || student.launchStrategy || student.launchEventTopic) ? "Edit launch info" : "Add launch info"}
+                                  {(student.niche || student.launchStrategy || student.launchEventTopic || student.approvedEventTitle) ? "Edit launch info" : "Add launch info"}
                                 </button>
                               </div>
                             )}
