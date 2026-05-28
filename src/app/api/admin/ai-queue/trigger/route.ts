@@ -27,8 +27,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
   }
 
-  const result = await runAiReview(submissionId)
-
-  // Return the full result — the dashboard uses this to refresh the queue
-  return NextResponse.json(result)
+  try {
+    const result = await runAiReview(submissionId)
+    return NextResponse.json(result)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "unknown error"
+    console.error(`[ai-queue/trigger] runAiReview threw for ${submissionId}:`, msg)
+    return NextResponse.json({ error: `Review pipeline error: ${msg}` }, { status: 500 })
+  }
 }
