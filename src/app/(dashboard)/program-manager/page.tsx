@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { FeedbackRenderer, isAiReview } from "@/components/FeedbackRenderer"
 
 interface Submission {
   id: string
@@ -666,19 +667,23 @@ export default function ProgramManagerPage() {
                         </div>
                       )}
                       {submission.coachFeedback && (
-                        <div className="mt-3 rounded-md bg-blue-50 p-3">
-                          <p className="text-sm font-medium text-blue-900 mb-1">
-                            Coach Feedback:
-                          </p>
-                          <p className="text-sm text-blue-800">{submission.coachFeedback}</p>
-                        </div>
+                        isAiReview(submission.coachFeedback) ? (
+                          <div className="mt-3 rounded-md border border-slate-200 bg-white p-4">
+                            <FeedbackRenderer text={submission.coachFeedback} />
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-md bg-blue-50 p-3">
+                            <p className="text-sm font-medium text-blue-900 mb-1">Coach Feedback:</p>
+                            <p className="text-sm text-blue-800 whitespace-pre-wrap">{submission.coachFeedback}</p>
+                          </div>
+                        )
                       )}
                       {submission.headCoachFeedback && (
                         <div className="mt-3 rounded-md bg-purple-50 p-3">
                           <p className="text-sm font-medium text-purple-900 mb-1">
                             Head Coach Feedback:
                           </p>
-                          <p className="text-sm text-purple-800">
+                          <p className="text-sm text-purple-800 whitespace-pre-wrap">
                             {submission.headCoachFeedback}
                           </p>
                         </div>
@@ -944,15 +949,21 @@ export default function ProgramManagerPage() {
                                       </Badge>
                                     </div>
                                     {sub.coachFeedback && (
-                                      <div className="mt-2 text-xs bg-blue-50 p-2 rounded">
-                                        <span className="font-medium text-blue-900">Coach Feedback: </span>
-                                        <span className="text-blue-800">{sub.coachFeedback}</span>
-                                      </div>
+                                      isAiReview(sub.coachFeedback) ? (
+                                        <div className="mt-2 rounded border border-slate-200 bg-white p-3">
+                                          <FeedbackRenderer text={sub.coachFeedback} />
+                                        </div>
+                                      ) : (
+                                        <div className="mt-2 text-xs bg-blue-50 p-2 rounded">
+                                          <span className="font-medium text-blue-900">Coach Feedback: </span>
+                                          <span className="text-blue-800 whitespace-pre-wrap">{sub.coachFeedback}</span>
+                                        </div>
+                                      )
                                     )}
                                     {sub.headCoachFeedback && (
                                       <div className="mt-1 text-xs bg-purple-50 p-2 rounded">
                                         <span className="font-medium text-purple-900">Head Coach Feedback: </span>
-                                        <span className="text-purple-800">{sub.headCoachFeedback}</span>
+                                        <span className="text-purple-800 whitespace-pre-wrap">{sub.headCoachFeedback}</span>
                                       </div>
                                     )}
                                     <div className="mt-2">
@@ -1184,10 +1195,16 @@ export default function ProgramManagerPage() {
                                   </Badge>
                                 </div>
                                 {submission.coachFeedback && (
-                                  <div className="mt-2 text-xs bg-white p-2 rounded">
-                                    <span className="font-medium">Feedback: </span>
-                                    {submission.coachFeedback}
-                                  </div>
+                                  isAiReview(submission.coachFeedback) ? (
+                                    <div className="mt-2 rounded border border-slate-200 bg-white p-3">
+                                      <FeedbackRenderer text={submission.coachFeedback} />
+                                    </div>
+                                  ) : (
+                                    <div className="mt-2 text-xs bg-white p-2 rounded">
+                                      <span className="font-medium">Feedback: </span>
+                                      <span className="whitespace-pre-wrap">{submission.coachFeedback}</span>
+                                    </div>
+                                  )
                                 )}
                               </div>
                             ))}

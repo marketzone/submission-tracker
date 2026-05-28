@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FeedbackRenderer, isAiReview } from "@/components/FeedbackRenderer"
 
 interface Submission {
   id: string
@@ -719,16 +720,22 @@ export default function StudentDashboard() {
                   )}
 
                   {submission.coachFeedback && (
-                    <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
-                      <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Coach Feedback</p>
-                      <p className="text-sm text-amber-900">{submission.coachFeedback}</p>
-                    </div>
+                    isAiReview(submission.coachFeedback) ? (
+                      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
+                        <FeedbackRenderer text={submission.coachFeedback} />
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                        <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Coach Feedback</p>
+                        <p className="text-sm text-amber-900 whitespace-pre-wrap">{submission.coachFeedback}</p>
+                      </div>
+                    )
                   )}
 
                   {submission.headCoachFeedback && (
                     <div className="mt-3 rounded-lg bg-violet-50 border border-violet-200 p-3">
                       <p className="text-xs font-semibold text-violet-800 uppercase tracking-wide mb-1">Head Coach Feedback</p>
-                      <p className="text-sm text-violet-900">{submission.headCoachFeedback}</p>
+                      <p className="text-sm text-violet-900 whitespace-pre-wrap">{submission.headCoachFeedback}</p>
                     </div>
                   )}
 

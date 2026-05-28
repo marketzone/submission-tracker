@@ -367,6 +367,11 @@ export default function HeadCoachDashboard() {
       })
       if (res.ok) {
         setAiQueue((prev) => prev.filter((item) => item.id !== submissionId))
+        // approve / edit_approve / override-proceed all set status=APPROVED,
+        // so the submission leaves the Final Review queue too.
+        if (action !== "override" || overrideVerdict === "proceed") {
+          setSubmissions((prev) => prev.filter((s) => s.id !== submissionId))
+        }
         setEditingQueueId(null)
         setEditedFields({})
         setOverrideId(null)
