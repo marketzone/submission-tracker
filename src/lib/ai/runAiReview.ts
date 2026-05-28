@@ -5,7 +5,7 @@ import { assembleLaunchInfo } from "./assembleLaunchInfo"
 import { lookupWeekCriteria, deriveReviewerStrategy } from "./weekCriteriaLookup"
 import { buildReviewPrompt } from "./buildReviewPrompt"
 import { RUBRIC_VERSION } from "./masterRubric"
-import type { WeekCriteria } from "@prisma/client"
+import { Prisma, type WeekCriteria } from "@prisma/client"
 
 const REVIEW_MODEL = "claude-opus-4-7"
 const MAX_OUTPUT_TOKENS = 8192
@@ -96,7 +96,7 @@ async function writeToDb(
     data: {
       aiReviewStatus,
       aiNicheAlignment: nicheAlignment,
-      aiFeedback: feedbackWithMeta as Record<string, unknown> | null,
+      aiFeedback: feedbackWithMeta !== null ? feedbackWithMeta as unknown as Prisma.InputJsonValue : Prisma.DbNull,
       aiTriageVerdict: aiTriageVerdict ?? "hold",
       aiReviewedAt: new Date(),
       reviewModelVersion: RUBRIC_VERSION,
