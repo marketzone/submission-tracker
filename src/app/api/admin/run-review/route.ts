@@ -5,6 +5,8 @@
 // POST /api/admin/run-review
 // Header: Authorization: Bearer <CRON_SECRET>
 // Body:   { submissionId: string }
+
+export const maxDuration = 300 // 5 minutes — Claude review takes 2-3 min
 //
 // Returns the full review result: verdict, patterns used, aiFeedback JSON, token usage.
 // No student names or emails in the response — IDs only (per PII logging rule).
