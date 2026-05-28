@@ -745,6 +745,11 @@ export default function HeadCoachDashboard() {
                           {triageReason && (
                             <p className="mt-1.5 text-xs text-muted-foreground italic">{triageReason}</p>
                           )}
+                          {!triageReason && (fb?.hold_reason as string | undefined) && (
+                            <p className="mt-1.5 text-xs text-amber-700 font-medium">
+                              Held for input: {fb.hold_reason as string}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -786,6 +791,13 @@ export default function HeadCoachDashboard() {
                       {/* Expanded feedback panel */}
                       {isExpanded && fb && (
                         <div className="mt-4 border-t border-border pt-4 space-y-4">
+                          {/* Hold-for-input notice — shown when no real feedback fields exist */}
+                          {(fb.hold_reason as string | undefined) && (
+                            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                              <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1">Review not run</p>
+                              <p className="text-sm text-amber-700">{fb.hold_reason as string}</p>
+                            </div>
+                          )}
                           {/* persuasive_strength flags */}
                           {fb.persuasive_strength != null && typeof fb.persuasive_strength === "object" && (
                             <div className="flex flex-wrap gap-2">
