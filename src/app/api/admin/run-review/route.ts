@@ -122,9 +122,9 @@ export async function GET(request: Request) {
   let patternRows = allRows
   if (submission.weekNumber === 6) {
     if (docFetch.fileType === "slides") {
-      patternRows = allRows.filter((r) => r.templateVariant === "webinar")
+      patternRows = allRows.filter((r) => r.templateVariant === null)
     } else {
-      patternRows = allRows.filter((r) => r.templateVariant !== "webinar")
+      patternRows = allRows.filter((r) => r.templateVariant !== null)
     }
   }
 

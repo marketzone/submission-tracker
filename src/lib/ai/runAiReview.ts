@@ -111,13 +111,13 @@ function filterPatternsForSubmission(
 ): WeekCriteria[] {
   if (weekNumber !== 6) return criteriaRows
 
+  // In the week_criteria seed, the Week 6 webinar pattern is stored with
+  // templateVariant = null (the three sales-copy variants have explicit slugs).
   if (fileType === "slides") {
-    // Webinar presentation
-    const webinar = criteriaRows.filter((r) => r.templateVariant === "webinar")
+    const webinar = criteriaRows.filter((r) => r.templateVariant === null)
     return webinar.length > 0 ? webinar : criteriaRows
   } else {
-    // Sales copy (doc or unknown — default to sales copy when not slides)
-    const salesCopy = criteriaRows.filter((r) => r.templateVariant !== "webinar")
+    const salesCopy = criteriaRows.filter((r) => r.templateVariant !== null)
     return salesCopy.length > 0 ? salesCopy : criteriaRows
   }
 }
