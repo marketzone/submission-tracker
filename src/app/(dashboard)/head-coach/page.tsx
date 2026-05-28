@@ -115,6 +115,9 @@ export default function HeadCoachDashboard() {
   const [feedback, setFeedback] = useState("")
   const [activeTab, setActiveTab] = useState<Tab>("reviews")
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null)
+  const [editingLinkUrl, setEditingLinkUrl] = useState("")
+  const [savingLinkId, setSavingLinkId] = useState<string | null>(null)
   const [expandedLaunchId, setExpandedLaunchId] = useState<string | null>(null)
   const [launchInfoStudents, setLaunchInfoStudents] = useState<LaunchInfoStudent[]>([])
   const [reviewingLaunchId, setReviewingLaunchId] = useState<string | null>(null)
@@ -204,6 +207,32 @@ export default function HeadCoachDashboard() {
       alert("An error occurred")
     } finally {
       setProcessingLaunchReview(null)
+    }
+  }
+
+  const handleUpdateLink = async (submissionId: string) => {
+    if (!editingLinkUrl.trim()) return
+    setSavingLinkId(submissionId)
+    try {
+      const res = await fetch(`/api/submissions/${submissionId}/update-link`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workbookUrl: editingLinkUrl.trim() }),
+      })
+      if (res.ok) {
+        setSubmissions((prev) =>
+          prev.map((s) => s.id === submissionId ? { ...s, workbookUrl: editingLinkUrl.trim() } : s)
+        )
+        setEditingLinkId(null)
+        setEditingLinkUrl("")
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to update link")
+      }
+    } catch {
+      alert("Network error")
+    } finally {
+      setSavingLinkId(null)
     }
   }
 
@@ -510,13 +539,53 @@ export default function HeadCoachDashboard() {
                           </span>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-1.5 text-sm">
-                          <svg className="h-3.5 w-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                          </svg>
-                          <a href={submission.workbookUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 truncate transition-colors">
-                            {submission.workbookUrl}
-                          </a>
+                        <div className="mt-3">
+                          {editingLinkId === submission.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="url"
+                                value={editingLinkUrl}
+                                onChange={(e) => setEditingLinkUrl(e.target.value)}
+                                className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                placeholder="Paste new Google Doc/Slides URL"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleUpdateLink(submission.id)}
+                                disabled={savingLinkId === submission.id || !editingLinkUrl.trim()}
+                                className="shrink-0"
+                              >
+                                {savingLinkId === submission.id ? "Saving..." : "Save"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => { setEditingLinkId(null); setEditingLinkUrl("") }}
+                                className="shrink-0"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <svg className="h-3.5 w-3.5 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                              </svg>
+                              <a href={submission.workbookUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 truncate transition-colors">
+                                {submission.workbookUrl}
+                              </a>
+                              <button
+                                onClick={() => { setEditingLinkId(submission.id); setEditingLinkUrl(submission.workbookUrl) }}
+                                className="shrink-0 ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                                title="Edit link"
+                              >
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <p className="mt-2 text-xs text-muted-foreground">
