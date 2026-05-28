@@ -111,7 +111,7 @@ async function extractSlidesText(docId: string, apiKey: string): Promise<string>
 }
 
 function extractTextFromContent(
-  textContent: { textElements?: Array<{ textRun?: { content?: string } }> }
+  textContent: { textElements?: Array<{ textRun?: { content?: string | null } }> }
 ): string {
   return (textContent.textElements ?? [])
     .map((el) => el.textRun?.content ?? "")
