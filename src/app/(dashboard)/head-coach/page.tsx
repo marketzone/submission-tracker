@@ -427,9 +427,8 @@ export default function HeadCoachDashboard() {
     LAUNCH_CLASS: "Launch Class",
   }
 
-  const eligibleForTrigger = submissions.filter(
-    (s) => s.status === "HEAD_COACH_REVIEW" && !aiQueue.some((q) => q.id === s.id)
-  )
+  const eligibleForTrigger = submissions.filter((s) => s.status === "HEAD_COACH_REVIEW")
+  const alreadyQueued = new Set(aiQueue.map((q) => q.id))
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -730,7 +729,7 @@ export default function HeadCoachDashboard() {
                   </option>
                   {eligibleForTrigger.map((s) => (
                     <option key={s.id} value={s.id}>
-                      Week {s.weekNumber} — {s.student.name} — {s.workbookTitle}
+                      Week {s.weekNumber} — {s.student.name} — {s.workbookTitle}{alreadyQueued.has(s.id) ? " (re-run)" : ""}
                     </option>
                   ))}
                 </select>
