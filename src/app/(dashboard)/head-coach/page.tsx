@@ -771,7 +771,7 @@ export default function HeadCoachDashboard() {
                       {isExpanded && fb && (
                         <div className="mt-4 border-t border-border pt-4 space-y-4">
                           {/* persuasive_strength flags */}
-                          {fb.persuasive_strength && typeof fb.persuasive_strength === "object" && (
+                          {fb.persuasive_strength != null && typeof fb.persuasive_strength === "object" && (
                             <div className="flex flex-wrap gap-2">
                               {(["specific_pain", "concrete_promise", "reason_to_act_now", "trust_through_specificity"] as const).map((key) => {
                                 const ps = fb.persuasive_strength as Record<string, string>
