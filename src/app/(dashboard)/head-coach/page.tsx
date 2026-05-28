@@ -394,19 +394,21 @@ export default function HeadCoachDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ submissionId: triggerSubmissionId.trim() }),
       })
-      const data = await res.json()
+      const text = await res.text()
+      let data: Record<string, unknown> = {}
+      try { data = JSON.parse(text) } catch { /* non-JSON response, e.g. Vercel timeout page */ }
       if (res.ok) {
         setTriggerResult(
-          `Done — verdict: ${data.aiTriageVerdict ?? "unknown"} · outcome: ${data.outcome} · tokens: ${data.tokenUsage ? `${data.tokenUsage.inputTokens}in / ${data.tokenUsage.outputTokens}out` : "n/a"}`
+          `Done — verdict: ${data.aiTriageVerdict ?? "unknown"} · outcome: ${data.outcome ?? "?"} · tokens: ${data.tokenUsage ? `${(data.tokenUsage as {inputTokens:number}).inputTokens}in / ${(data.tokenUsage as {outputTokens:number}).outputTokens}out` : "n/a"}`
         )
         setTriggerSubmissionId("")
         fetchAiQueue()
       } else {
-        setTriggerResult(`Error: ${data.error || "unknown error"}`)
+        setTriggerResult(`Error ${res.status}: ${(data.error as string) || res.statusText || "unknown error"}`)
       }
     } catch (error) {
       console.error("Trigger error:", error)
-      setTriggerResult("Network error")
+      setTriggerResult(`Request failed: ${error instanceof Error ? error.message : "unknown"}`)
     } finally {
       setTriggerLoading(false)
     }
