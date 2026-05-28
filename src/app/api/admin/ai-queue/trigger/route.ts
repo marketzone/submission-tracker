@@ -4,6 +4,8 @@
 // Auth: HEAD_COACH session only (dashboard-facing; CRON_SECRET not required).
 // Per PII rule: response includes submission ID and verdict, never submission text.
 
+export const maxDuration = 300 // 5 minutes — Claude review takes 2-3 min
+
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { runAiReview } from "@/lib/ai/runAiReview"
