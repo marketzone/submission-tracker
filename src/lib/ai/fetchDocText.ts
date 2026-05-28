@@ -61,61 +61,15 @@ async function extractDocText(docId: string, apiKey: string): Promise<string> {
   return (res.data as string) ?? ""
 }
 
+// Google Slides API (google.slides) requires OAuth even for publicly shared files.
+// Drive export works with a bare API key for any file shared "Anyone with the link can view".
 async function extractSlidesText(docId: string, apiKey: string): Promise<string> {
-  const slides = google.slides({ version: "v1", auth: apiKey })
-  const res = await slides.presentations.get({ presentationId: docId })
-  const presentation = res.data
-
-  const slideTexts: string[] = []
-
-  for (let i = 0; i < (presentation.slides?.length ?? 0); i++) {
-    const slide = presentation.slides![i]
-    const slideNumber = i + 1
-    const contentLines: string[] = []
-
-    for (const element of slide.pageElements ?? []) {
-      if (element.shape?.text) {
-        const text = extractTextFromContent(element.shape.text)
-        if (text.trim()) contentLines.push(text.trim())
-      }
-      if (element.table) {
-        for (const row of element.table.tableRows ?? []) {
-          for (const cell of row.tableCells ?? []) {
-            if (cell.text) {
-              const text = extractTextFromContent(cell.text)
-              if (text.trim()) contentLines.push(text.trim())
-            }
-          }
-        }
-      }
-    }
-
-    // Speaker notes — critical for Week 6 pitch review
-    let speakerNotes = ""
-    const notesPage = slide.slideProperties?.notesPage
-    if (notesPage) {
-      for (const element of notesPage.pageElements ?? []) {
-        if (element.shape?.text) {
-          const text = extractTextFromContent(element.shape.text)
-          if (text.trim()) speakerNotes += text.trim()
-        }
-      }
-    }
-
-    const slideBlock = [`--- Slide ${slideNumber} ---`, ...contentLines]
-    if (speakerNotes) slideBlock.push(`[Speaker Notes: ${speakerNotes}]`)
-    slideTexts.push(slideBlock.join("\n"))
-  }
-
-  return slideTexts.join("\n\n")
-}
-
-function extractTextFromContent(
-  textContent: { textElements?: Array<{ textRun?: { content?: string | null } }> }
-): string {
-  return (textContent.textElements ?? [])
-    .map((el) => el.textRun?.content ?? "")
-    .join("")
+  const drive = google.drive({ version: "v3", auth: apiKey })
+  const res = await drive.files.export(
+    { fileId: docId, mimeType: "text/plain" },
+    { responseType: "text" }
+  )
+  return (res.data as string) ?? ""
 }
 
 // ── fetchDocText — public API ─────────────────────────────────────────────────
