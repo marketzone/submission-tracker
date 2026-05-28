@@ -102,6 +102,8 @@ model Submission {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
+  reviewEdits         ReviewEdit[]
+
   @@index([studentId])
   @@index([coachId])
   @@index([status])
@@ -141,6 +143,32 @@ model WeekCriteria {
 
   @@index([weekNumber, launchStrategy])
   @@map("week_criteria")
+}
+
+// ── AI review edit log ────────────────────────────────────────────────────────
+// One row per field Mayowa changes when acting on a queue item.
+// Supports post-hoc analysis: which fields on which weeks get rewritten most.
+model ReviewEdit {
+  id                 String     @id @default(cuid())
+  submissionId       String
+  submission         Submission @relation(fields: [submissionId], references: [id])
+  studentId          String
+  weekNumber         Int
+  deliverableName    String
+  templateVariant    String?    // Week 6 variant analysis (webinar / long_form / desire_stack / etc.)
+  reviewModelVersion String
+  fieldName          String
+  aiValue            String     @db.Text
+  humanValue         String     @db.Text
+  aiVerdict          String
+  finalVerdict       String
+  editedAt           DateTime   @default(now())
+
+  @@index([submissionId])
+  @@index([weekNumber, fieldName])
+  @@index([aiVerdict, finalVerdict])
+  @@index([weekNumber, templateVariant])
+  @@map("review_edits")
 }
 
 // ── AI review status ──────────────────────────────────────────────────────────
