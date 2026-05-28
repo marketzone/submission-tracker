@@ -9,6 +9,7 @@
 // Per PII rule: submission IDs and status logged, never submission text.
 
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { formatCoachFeedback } from "@/lib/ai/formatCoachFeedback"
@@ -194,7 +195,7 @@ export async function POST(
         data: {
           aiReviewStatus: "HUMAN_REVIEWED",
           status: "APPROVED",
-          aiFeedback: editedFeedback,
+          aiFeedback: editedFeedback as unknown as Prisma.InputJsonValue,
           coachFeedback: formattedFeedback,
           headCoachId,
           headReviewedAt: new Date(),
