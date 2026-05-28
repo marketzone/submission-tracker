@@ -8,7 +8,7 @@ import { RUBRIC_VERSION } from "./masterRubric"
 import type { WeekCriteria } from "@prisma/client"
 
 const REVIEW_MODEL = "claude-opus-4-7"
-const MAX_OUTPUT_TOKENS = 4096
+const MAX_OUTPUT_TOKENS = 8192
 
 // ── Result type returned to the caller (API endpoint, future auto-trigger) ────
 export interface AiReviewRunResult {
@@ -69,12 +69,16 @@ async function writeToDb(
   nicheAlignment: string | null,
   tokenUsage: { inputTokens: number; outputTokens: number } | null
 ): Promise<void> {
-  // Map outcome to AiReviewStatus enum
+  // AI_REVIEW_REQUIRES_HUMAN_APPROVAL defaults TRUE.
+  // When TRUE: all outcomes queue to Mayowa (HELD_FOR_HUMAN).
+  // When FALSE: proceed verdicts auto-release (AUTO_APPROVED); hold verdicts still queue.
+  const requiresHumanApproval = process.env.AI_REVIEW_REQUIRES_HUMAN_APPROVAL !== "false"
+
   let aiReviewStatus: "PENDING" | "AUTO_APPROVED" | "HELD_FOR_HUMAN"
-  if (outcome === "reviewed" && aiTriageVerdict === "proceed") {
+  if (outcome === "reviewed" && aiTriageVerdict === "proceed" && !requiresHumanApproval) {
     aiReviewStatus = "AUTO_APPROVED"
   } else {
-    // held_for_input, api_error, parse_error, or verdict=hold all route to human
+    // held_for_input, api_error, parse_error, verdict=hold, or flag=true all route to human
     aiReviewStatus = "HELD_FOR_HUMAN"
   }
 
@@ -373,9 +377,55 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
 
   let parsedFeedback: Record<string, unknown>
 
-  try {
-    parsedFeedback = JSON.parse(cleaned)
-  } catch {
+  // Defensive JSON parser: handles the case where the model emits a structurally
+  // valid first JSON object, then appends remaining fields outside it as
+  // `, "field": "value", ...` — a known Claude output artifact with large responses.
+  // Truncation always fails to null → hold, never a silent partial pass.
+  const parseJsonDefensive = (raw: string): Record<string, unknown> | null => {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>
+    } catch {
+      // Find the end of the first complete JSON object by scanning brace depth
+      let depth = 0
+      let inString = false
+      let escape = false
+      let firstObjEnd = -1
+      for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i]
+        if (escape) { escape = false; continue }
+        if (ch === "\\" && inString) { escape = true; continue }
+        if (ch === '"') { inString = !inString; continue }
+        if (inString) continue
+        if (ch === "{") depth++
+        else if (ch === "}") { depth--; if (depth === 0) { firstObjEnd = i; break } }
+      }
+      if (firstObjEnd < 0) return null
+
+      const firstJson = raw.slice(0, firstObjEnd + 1)
+      const tail = raw.slice(firstObjEnd + 1).trim()
+
+      // No meaningful tail — the first object is the full response, but it failed
+      // standard parse for another reason. Return null to trigger hold.
+      if (!tail || (!tail.startsWith(",") && !tail.startsWith('"'))) {
+        try { return JSON.parse(firstJson) as Record<string, unknown> } catch { return null }
+      }
+
+      // Tail looks like a continuation: strip the leading comma and merge back
+      const continuation = tail.startsWith(",") ? tail.slice(1).trim() : tail
+      const merged = firstJson.slice(0, -1) + ", " + continuation + (continuation.trimEnd().endsWith("}") ? "" : "}")
+      try {
+        return JSON.parse(merged) as Record<string, unknown>
+      } catch {
+        // Merge failed — return the partial first object; missing required fields
+        // will be caught by the validation step below and route to hold
+        try { return JSON.parse(firstJson) as Record<string, unknown> } catch { return null }
+      }
+    }
+  }
+
+  const parsed = parseJsonDefensive(cleaned)
+
+  if (!parsed) {
     const holdReason = "Model response was not valid JSON — held for human review"
     await writeToDb(submissionId, "parse_error", holdReason, "hold", { raw_response: rawResponse }, null, tokenUsage)
     return {
@@ -395,6 +445,8 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
       dbWritten: true,
     }
   }
+
+  parsedFeedback = parsed
 
   // Validate required fields before trusting the response
   const requiredFields = ["triage_verdict", "launch_alignment", "template_adherence"]
