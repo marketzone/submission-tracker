@@ -1,5 +1,5 @@
 import { google } from "googleapis"
-import { getGoogleAuthClient } from "./googleAuth"
+import { getGoogleApiKey } from "./googleAuth"
 
 export type FileType = "doc" | "slides" | "unknown"
 
@@ -8,7 +8,7 @@ export type FetchDocResult =
   | { success: false; reason: string; fileType: FileType; docId: string | null }
 
 // ── URL parsing ───────────────────────────────────────────────────────────────
-// Handles the formats students actually paste:
+// Handles the URL formats students actually paste:
 //
 //  Google Docs:
 //    https://docs.google.com/document/d/{id}/edit
@@ -35,11 +35,9 @@ export function parseDocUrl(url: string): {
   const trimmed = url.trim()
   if (!trimmed.startsWith("http")) return { error: "URL does not start with http" }
 
-  // Extract file type from URL path before extracting ID
   let fileType: FileType = "unknown"
   if (trimmed.includes("/document/")) fileType = "doc"
   else if (trimmed.includes("/presentation/")) fileType = "slides"
-  // drive.google.com/file/d/{id} — type resolved later via Drive API metadata
 
   // /d/{id}/ pattern — covers docs, slides, and drive file links
   const matchD = trimmed.match(/\/d\/([a-zA-Z0-9_-]{25,})/)?.[1]
@@ -54,19 +52,17 @@ export function parseDocUrl(url: string): {
 
 // ── Text extraction helpers ───────────────────────────────────────────────────
 
-async function extractDocText(docId: string, auth: ReturnType<typeof getGoogleAuthClient>): Promise<string> {
-  const drive = google.drive({ version: "v3", auth })
-  // Export as plain text — simpler and more reliable than parsing the Docs API JSON
+async function extractDocText(docId: string, apiKey: string): Promise<string> {
+  const drive = google.drive({ version: "v3", auth: apiKey })
   const res = await drive.files.export(
     { fileId: docId, mimeType: "text/plain" },
     { responseType: "text" }
   )
-  // The export response data is the raw text
   return (res.data as string) ?? ""
 }
 
-async function extractSlidesText(docId: string, auth: ReturnType<typeof getGoogleAuthClient>): Promise<string> {
-  const slides = google.slides({ version: "v1", auth })
+async function extractSlidesText(docId: string, apiKey: string): Promise<string> {
+  const slides = google.slides({ version: "v1", auth: apiKey })
   const res = await slides.presentations.get({ presentationId: docId })
   const presentation = res.data
 
@@ -77,17 +73,16 @@ async function extractSlidesText(docId: string, auth: ReturnType<typeof getGoogl
     const slideNumber = i + 1
     const contentLines: string[] = []
 
-    // Extract text from all page elements (text boxes, shapes, tables)
     for (const element of slide.pageElements ?? []) {
       if (element.shape?.text) {
-        const text = extractTextFromTextContent(element.shape.text)
+        const text = extractTextFromContent(element.shape.text)
         if (text.trim()) contentLines.push(text.trim())
       }
       if (element.table) {
         for (const row of element.table.tableRows ?? []) {
           for (const cell of row.tableCells ?? []) {
             if (cell.text) {
-              const text = extractTextFromTextContent(cell.text)
+              const text = extractTextFromContent(cell.text)
               if (text.trim()) contentLines.push(text.trim())
             }
           }
@@ -95,13 +90,13 @@ async function extractSlidesText(docId: string, auth: ReturnType<typeof getGoogl
       }
     }
 
-    // Extract speaker notes
-    const notesPage = slide.slideProperties?.notesPage
+    // Speaker notes — critical for Week 6 pitch review
     let speakerNotes = ""
+    const notesPage = slide.slideProperties?.notesPage
     if (notesPage) {
       for (const element of notesPage.pageElements ?? []) {
         if (element.shape?.text) {
-          const text = extractTextFromTextContent(element.shape.text)
+          const text = extractTextFromContent(element.shape.text)
           if (text.trim()) speakerNotes += text.trim()
         }
       }
@@ -115,7 +110,7 @@ async function extractSlidesText(docId: string, auth: ReturnType<typeof getGoogl
   return slideTexts.join("\n\n")
 }
 
-function extractTextFromTextContent(
+function extractTextFromContent(
   textContent: { textElements?: Array<{ textRun?: { content?: string } }> }
 ): string {
   return (textContent.textElements ?? [])
@@ -123,7 +118,7 @@ function extractTextFromTextContent(
     .join("")
 }
 
-// ── fetchDocText — the public API ─────────────────────────────────────────────
+// ── fetchDocText — public API ─────────────────────────────────────────────────
 
 export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
   // 1. Parse the URL
@@ -134,24 +129,24 @@ export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
 
   const { docId, fileType: urlFileType } = parsed
 
-  // 2. Init auth — fail cleanly if credentials missing
-  let auth: ReturnType<typeof getGoogleAuthClient>
+  // 2. Get API key — fail cleanly if missing
+  let apiKey: string
   try {
-    auth = getGoogleAuthClient()
+    apiKey = getGoogleApiKey()
   } catch (e) {
     return {
       success: false,
-      reason: "Service account not configured (GOOGLE_SERVICE_ACCOUNT_JSON missing or invalid)",
+      reason: "GOOGLE_API_KEY not configured",
       fileType: urlFileType,
       docId,
     }
   }
 
-  // 3. Check file metadata via Drive API to confirm access and resolve file type
+  // 3. Verify access and resolve file type via Drive metadata
   let resolvedFileType: FileType = urlFileType
   try {
-    const drive = google.drive({ version: "v3", auth })
-    const meta = await drive.files.get({ fileId: docId, fields: "id,mimeType,name" })
+    const drive = google.drive({ version: "v3", auth: apiKey })
+    const meta = await drive.files.get({ fileId: docId, fields: "id,mimeType" })
     const mimeType = meta.data.mimeType ?? ""
 
     if (mimeType === "application/vnd.google-apps.document") resolvedFileType = "doc"
@@ -166,16 +161,14 @@ export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
     }
   } catch (e: unknown) {
     const err = e as { code?: number; message?: string }
-    // 403 = not shared with service account / access denied
     if (err?.code === 403) {
       return {
         success: false,
-        reason: "Document not shared with the service account — student must set sharing to 'Anyone with the link can view'",
+        reason: "Document not accessible — student must set sharing to 'Anyone with the link can view'",
         fileType: urlFileType,
         docId,
       }
     }
-    // 404 = document doesn't exist or ID is wrong
     if (err?.code === 404) {
       return {
         success: false,
@@ -186,20 +179,20 @@ export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
     }
     return {
       success: false,
-      reason: `Failed to access document metadata: ${err?.message ?? "unknown error"}`,
+      reason: `Failed to access document: ${err?.message ?? "unknown error"}`,
       fileType: urlFileType,
       docId,
     }
   }
 
-  // 4. Extract text based on resolved file type
+  // 4. Extract text
   try {
     let text: string
 
     if (resolvedFileType === "doc") {
-      text = await extractDocText(docId, auth)
+      text = await extractDocText(docId, apiKey)
     } else if (resolvedFileType === "slides") {
-      text = await extractSlidesText(docId, auth)
+      text = await extractSlidesText(docId, apiKey)
     } else {
       return {
         success: false,
@@ -224,7 +217,7 @@ export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
     if (err?.code === 403) {
       return {
         success: false,
-        reason: "Permission denied when reading document content — document must be shared with 'Anyone with the link can view'",
+        reason: "Permission denied reading document content — must be shared 'Anyone with the link can view'",
         fileType: resolvedFileType,
         docId,
       }
