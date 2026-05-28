@@ -272,13 +272,22 @@ export default function SubmitWorkbookPage() {
             <Input
               id="workbookUrl"
               type="url"
-              placeholder="https://docs.google.com/..."
+              placeholder="https://docs.google.com/document/d/... or /presentation/d/..."
               value={workbookUrl}
               onChange={(e) => setWorkbookUrl(e.target.value)}
               required
               className="h-10"
             />
-            <p className="text-xs text-muted-foreground">Link to your Google Doc, Notion page, or other workbook</p>
+            <div className="rounded-md bg-sky-50 border border-sky-200 p-2.5 space-y-1">
+              <p className="text-xs font-medium text-sky-800">Google Doc or Google Slides only</p>
+              <p className="text-xs text-sky-700">
+                Your workbook must be a native <strong>Google Doc</strong> or <strong>Google Slides</strong> file — not a Word or PowerPoint upload.
+                If you have a .docx or .pptx, open it in Google Drive, then go to <strong>File → Save as Google Docs / Google Slides</strong> first.
+              </p>
+              <p className="text-xs text-sky-700">
+                Sharing must be set to <strong>&ldquo;Anyone with the link can view&rdquo;</strong> — the AI reviewer cannot access restricted documents.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-1.5">

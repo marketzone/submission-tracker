@@ -25,6 +25,8 @@
     "react-dom": "19.2.3",
     "react-email": "^5.2.8",
     "react-hook-form": "^7.71.1",
+    "@anthropic-ai/sdk": "^0.36.3",
+    "googleapis": "^144.0.0",
     "resend": "^6.9.1",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"
