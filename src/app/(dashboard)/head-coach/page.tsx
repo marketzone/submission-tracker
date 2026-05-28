@@ -398,6 +398,10 @@ export default function HeadCoachDashboard() {
     LAUNCH_CLASS: "Launch Class",
   }
 
+  const eligibleForTrigger = submissions.filter(
+    (s) => s.status === "HEAD_COACH_REVIEW" && !aiQueue.some((q) => q.id === s.id)
+  )
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Page header */}
@@ -638,17 +642,29 @@ export default function HeadCoachDashboard() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Run AI Review</CardTitle>
-              <CardDescription className="text-sm">Trigger a review for a specific submission ID</CardDescription>
+              <CardDescription className="text-sm">
+                {eligibleForTrigger.length === 0
+                  ? "No submissions awaiting AI review"
+                  : `${eligibleForTrigger.length} submission${eligibleForTrigger.length === 1 ? "" : "s"} awaiting AI review`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Submission ID"
+                <select
                   value={triggerSubmissionId}
                   onChange={(e) => setTriggerSubmissionId(e.target.value)}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+                  disabled={eligibleForTrigger.length === 0}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                >
+                  <option value="">
+                    {eligibleForTrigger.length === 0 ? "No submissions awaiting review" : "Select a submission..."}
+                  </option>
+                  {eligibleForTrigger.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      Week {s.weekNumber} — {s.student.name} — {s.workbookTitle}
+                    </option>
+                  ))}
+                </select>
                 <Button
                   onClick={handleTriggerReview}
                   disabled={triggerLoading || !triggerSubmissionId.trim()}
