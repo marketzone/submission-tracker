@@ -747,7 +747,7 @@ export default function HeadCoachDashboard() {
                           )}
                           {!triageReason && (fb?.hold_reason as string | undefined) && (
                             <p className="mt-1.5 text-xs text-amber-700 font-medium">
-                              Held for input: {fb.hold_reason as string}
+                              Held for input: {fb?.hold_reason as string}
                             </p>
                           )}
                         </div>
