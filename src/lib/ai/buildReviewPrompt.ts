@@ -22,7 +22,7 @@ export interface ReviewPrompt {
 // Strip developer-facing [BUILD NOTE: ...] blocks from pattern text.
 // These are build instructions for the developer, not review instructions for the model.
 function stripBuildNotes(text: string): string {
-  return text.replace(/\[BUILD NOTE:[^\]]*\]/gs, "").replace(/\n{3,}/g, "\n\n").trim()
+  return text.replace(/\[BUILD NOTE:[^\]]*\]/g, "").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 // Build the user message with XML-tagged sections.
