@@ -19,6 +19,7 @@ export async function GET() {
         launchPricing: true,
         launchPrice: true,
         launchEventTopic: true,
+        niche: true,
         approvedEventTitle: true,
         launchInfoStatus: true,
         launchInfoFeedback: true,
@@ -58,14 +59,14 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const { launchStrategy, launchPricing, launchPrice, launchEventTopic } = await request.json()
+    const { launchStrategy, launchPricing, launchPrice, launchEventTopic, niche } = await request.json()
 
     const requiresReview = ["STRATEGY_CLASS", "FUNNEL_CLASS"].includes(student.studentClass)
 
     if (requiresReview) {
-      if (!launchStrategy || !launchPricing || !launchEventTopic?.trim()) {
+      if (!launchStrategy || !launchPricing || !launchEventTopic?.trim() || !niche?.trim()) {
         return NextResponse.json(
-          { error: "Please fill all required fields: launch format, pricing model, and content direction" },
+          { error: "Please fill all required fields: Level 5 Niche, launch format, pricing model, and content direction" },
           { status: 400 }
         )
       }
@@ -84,6 +85,7 @@ export async function PATCH(request: Request) {
         launchPricing: launchPricing || null,
         launchPrice: launchPrice || null,
         launchEventTopic: launchEventTopic || null,
+        niche: niche || null,
         ...(requiresReview && {
           launchInfoStatus: "PENDING_REVIEW",
           launchInfoFeedback: null,
@@ -105,6 +107,7 @@ export async function PATCH(request: Request) {
             <p>Hi ${headCoach.name},</p>
             <p><strong>${student.name}</strong> has submitted their launch information for review.</p>
             <ul>
+              <li><strong>Level 5 Niche:</strong> ${niche}</li>
               <li><strong>Launch Format:</strong> ${launchStrategy}</li>
               <li><strong>Pricing:</strong> ${launchPricing}${launchPrice ? ` ($${launchPrice})` : ""}</li>
               <li><strong>Content Direction:</strong> ${launchEventTopic}</li>

@@ -96,6 +96,7 @@ export default function StudentDashboard() {
   const [launchPricing, setLaunchPricing] = useState("")
   const [launchPrice, setLaunchPrice] = useState("")
   const [launchEventTopic, setLaunchEventTopic] = useState("")
+  const [niche, setNiche] = useState("")
   const [approvedEventTitle, setApprovedEventTitle] = useState("")
   const [studentClass, setStudentClass] = useState<string | null>(null)
   const [launchInfoStatus, setLaunchInfoStatus] = useState<string | null>(null)
@@ -135,6 +136,7 @@ export default function StudentDashboard() {
       setLaunchPricing(data.launchPricing || "")
       setLaunchPrice(data.launchPrice || "")
       setLaunchEventTopic(data.launchEventTopic || "")
+      setNiche(data.niche || "")
       setApprovedEventTitle(data.approvedEventTitle || "")
       setLaunchInfoStatus(data.launchInfoStatus || null)
       setLaunchInfoFeedback(data.launchInfoFeedback || null)
@@ -196,7 +198,7 @@ export default function StudentDashboard() {
       const response = await fetch("/api/users/launch-info", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ launchStrategy, launchPricing, launchPrice, launchEventTopic }),
+        body: JSON.stringify({ launchStrategy, launchPricing, launchPrice, launchEventTopic, niche }),
       })
       if (response.ok) {
         setSaveLaunchSuccess(true)
@@ -271,6 +273,21 @@ export default function StudentDashboard() {
             <CardDescription className="text-sm">Be as specific as possible with each field</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="nicheGate" className="text-sm font-medium">
+                Level 5 Niche <span className="text-destructive">*</span>
+              </Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">Describe your specific target audience — who they are, their situation, and the exact problem you solve for them.</p>
+              <Textarea
+                id="nicheGate"
+                placeholder="e.g. Female solopreneurs aged 35–50 who want to launch a coaching business but don't know where to start..."
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Launch Strategy <span className="text-destructive">*</span></Label>
               <Select value={launchStrategy} onValueChange={setLaunchStrategy}>
@@ -521,6 +538,20 @@ export default function StudentDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
+
+            {/* Level 5 Niche */}
+            <div className="space-y-1.5">
+              <Label htmlFor="nicheDashboard" className="text-sm font-medium">Level 5 Niche</Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">Describe your specific target audience — who they are, their situation, and the exact problem you solve for them.</p>
+              <Textarea
+                id="nicheDashboard"
+                placeholder="e.g. Female solopreneurs aged 35–50 who want to launch a coaching business but don't know where to start..."
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
 
             {/* Launch Strategy — format dropdown */}
             <div className="space-y-1.5">
