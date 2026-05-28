@@ -2,6 +2,7 @@
 Apply the review_edits migration to the staging database.
 Also registers the migration in _prisma_migrations so Prisma tracks it.
 """
+import os
 import hashlib
 import psycopg2
 import datetime
