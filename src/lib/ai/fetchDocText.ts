@@ -1,4 +1,5 @@
 import { google } from "googleapis"
+import zlib from "zlib"
 import { getGoogleApiKey } from "./googleAuth"
 
 export type FileType = "doc" | "slides" | "unknown"
@@ -72,6 +73,53 @@ async function extractSlidesText(docId: string, apiKey: string): Promise<string>
   return (res.data as string) ?? ""
 }
 
+// ── Word document (.docx) support ────────────────────────────────────────────
+// .docx files are ZIP archives containing word/document.xml.
+// Drive's files.export only works for native Google Workspace files, so for
+// uploaded Word docs we download the raw file and parse the ZIP ourselves.
+
+function extractTextFromDocxBuffer(buffer: Buffer): string {
+  const sig = Buffer.from([0x50, 0x4b, 0x03, 0x04]) // PK local-file-header
+  let offset = 0
+  while (offset < buffer.length - 30) {
+    const idx = buffer.indexOf(sig, offset)
+    if (idx < 0) break
+    const compression = buffer.readUInt16LE(idx + 8)
+    const compressedSize = buffer.readUInt32LE(idx + 18)
+    const fileNameLen = buffer.readUInt16LE(idx + 26)
+    const extraLen = buffer.readUInt16LE(idx + 28)
+    const dataStart = idx + 30 + fileNameLen + extraLen
+    const fileName = buffer.toString("utf8", idx + 30, idx + 30 + fileNameLen)
+
+    if (fileName === "word/document.xml") {
+      const raw = buffer.subarray(dataStart, dataStart + compressedSize)
+      let xml: string
+      try {
+        xml = (compression === 8 ? zlib.inflateRawSync(raw) : raw).toString("utf8")
+      } catch {
+        return ""
+      }
+      const parts: string[] = []
+      const re = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g
+      let m: RegExpExecArray | null
+      while ((m = re.exec(xml)) !== null) parts.push(m[1])
+      return parts.join(" ").replace(/\s+/g, " ").trim()
+    }
+    offset = dataStart + (compressedSize || 1)
+  }
+  return ""
+}
+
+async function extractWordDocText(docId: string, apiKey: string): Promise<string> {
+  const drive = google.drive({ version: "v3", auth: apiKey })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await (drive.files.get as any)(
+    { fileId: docId, alt: "media" },
+    { responseType: "arraybuffer" }
+  )
+  return extractTextFromDocxBuffer(Buffer.from(res.data as ArrayBuffer))
+}
+
 // ── fetchDocText — public API ─────────────────────────────────────────────────
 
 export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
@@ -105,10 +153,31 @@ export async function fetchDocText(driveUrl: string): Promise<FetchDocResult> {
 
     if (mimeType === "application/vnd.google-apps.document") resolvedFileType = "doc"
     else if (mimeType === "application/vnd.google-apps.presentation") resolvedFileType = "slides"
+    else if (
+      mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      mimeType === "application/msword"
+    ) {
+      // Uploaded Word document — download raw file and parse ZIP/XML
+      try {
+        const text = await extractWordDocText(docId, apiKey)
+        if (!text.trim()) {
+          return { success: false, reason: "Word document is empty or text could not be extracted", fileType: "doc", docId }
+        }
+        return { success: true, text: text.trim(), fileType: "doc", docId }
+      } catch (e: unknown) {
+        const err = e as { code?: number; message?: string }
+        return {
+          success: false,
+          reason: `Could not read Word document: ${err?.message ?? "unknown error"}`,
+          fileType: "doc",
+          docId,
+        }
+      }
+    }
     else if (mimeType) {
       return {
         success: false,
-        reason: `Unsupported file type: ${mimeType}. Only Google Docs and Google Slides are supported.`,
+        reason: `Unsupported file type: ${mimeType}. Only Google Docs, Google Slides, and Word documents are supported.`,
         fileType: "unknown",
         docId,
       }
