@@ -79,19 +79,44 @@ async function extractSlidesText(docId: string, apiKey: string): Promise<string>
 // uploaded Word docs we download the raw file and parse the ZIP ourselves.
 
 function extractTextFromDocxBuffer(buffer: Buffer): string {
-  const sig = Buffer.from([0x50, 0x4b, 0x03, 0x04]) // PK local-file-header
-  let offset = 0
-  while (offset < buffer.length - 30) {
-    const idx = buffer.indexOf(sig, offset)
-    if (idx < 0) break
-    const compression = buffer.readUInt16LE(idx + 8)
-    const compressedSize = buffer.readUInt32LE(idx + 18)
-    const fileNameLen = buffer.readUInt16LE(idx + 26)
-    const extraLen = buffer.readUInt16LE(idx + 28)
-    const dataStart = idx + 30 + fileNameLen + extraLen
-    const fileName = buffer.toString("utf8", idx + 30, idx + 30 + fileNameLen)
+  // Read the central directory (at the end of the ZIP) rather than walking
+  // local file headers — local headers may store compressedSize=0 when a
+  // data descriptor is used, making offset arithmetic unreliable.
+
+  // 1. Find the End-of-Central-Directory record (PK\x05\x06)
+  let eocdIdx = -1
+  for (let i = buffer.length - 22; i >= Math.max(0, buffer.length - 65578); i--) {
+    if (buffer[i] === 0x50 && buffer[i + 1] === 0x4b &&
+        buffer[i + 2] === 0x05 && buffer[i + 3] === 0x06) {
+      eocdIdx = i
+      break
+    }
+  }
+  if (eocdIdx < 0) return ""
+
+  const cdOffset = buffer.readUInt32LE(eocdIdx + 16)
+  const cdSize   = buffer.readUInt32LE(eocdIdx + 12)
+
+  // 2. Walk central directory entries (PK\x01\x02) to find word/document.xml
+  let pos = cdOffset
+  while (pos + 46 <= cdOffset + cdSize && pos + 46 <= buffer.length) {
+    if (buffer[pos] !== 0x50 || buffer[pos + 1] !== 0x4b ||
+        buffer[pos + 2] !== 0x01 || buffer[pos + 3] !== 0x02) break
+
+    const compression      = buffer.readUInt16LE(pos + 10)
+    const compressedSize   = buffer.readUInt32LE(pos + 20)
+    const fileNameLen      = buffer.readUInt16LE(pos + 28)
+    const extraLen         = buffer.readUInt16LE(pos + 30)
+    const commentLen       = buffer.readUInt16LE(pos + 32)
+    const localOffset      = buffer.readUInt32LE(pos + 42)
+    const fileName         = buffer.toString("utf8", pos + 46, pos + 46 + fileNameLen)
 
     if (fileName === "word/document.xml") {
+      // Local file header: skip 30-byte fixed header + filename + extra
+      const localFileNameLen = buffer.readUInt16LE(localOffset + 26)
+      const localExtraLen    = buffer.readUInt16LE(localOffset + 28)
+      const dataStart        = localOffset + 30 + localFileNameLen + localExtraLen
+
       const raw = buffer.subarray(dataStart, dataStart + compressedSize)
       let xml: string
       try {
@@ -99,13 +124,16 @@ function extractTextFromDocxBuffer(buffer: Buffer): string {
       } catch {
         return ""
       }
+
+      // Extract text from <w:t> elements (Word's text run elements)
       const parts: string[] = []
       const re = /<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g
       let m: RegExpExecArray | null
       while ((m = re.exec(xml)) !== null) parts.push(m[1])
       return parts.join(" ").replace(/\s+/g, " ").trim()
     }
-    offset = dataStart + (compressedSize || 1)
+
+    pos += 46 + fileNameLen + extraLen + commentLen
   }
   return ""
 }
