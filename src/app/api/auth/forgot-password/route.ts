@@ -32,9 +32,12 @@ export async function POST(request: Request) {
         },
       })
 
-      // Create reset link — fall back to VERCEL_URL if NEXTAUTH_URL is not set
+      // Derive base URL from the incoming request so the link always uses
+      // the domain the student is actually on (custom domain or Vercel URL).
+      // Explicit NEXTAUTH_URL env var still overrides if set.
+      const requestUrl = new URL(request.url)
       const baseUrl = process.env.NEXTAUTH_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+        `${requestUrl.protocol}//${requestUrl.host}`
       const resetLink = `${baseUrl}/reset-password?token=${resetToken}`
 
       // Send email
