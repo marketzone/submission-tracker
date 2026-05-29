@@ -234,25 +234,38 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
       where: { studentId: student.id, weekNumber: 4, status: "APPROVED" },
       orderBy: { submittedAt: "desc" },
     })
+    const w4Fetch = w4Sub ? await fetchDocText(w4Sub.workbookUrl) : null
 
-    let offerFetch = w4Sub ? await fetchDocText(w4Sub.workbookUrl) : null
+    let offerFetch = w4Fetch?.success ? w4Fetch : null
 
-    // If Week 4 missing or its URL is unreadable, try Week 2
-    if (!offerFetch?.success) {
-      const w2Sub = await prisma.submission.findFirst({
+    let w2Sub: { workbookUrl: string } | null = null
+    let w2Fetch: Awaited<ReturnType<typeof fetchDocText>> | null = null
+
+    if (!offerFetch) {
+      w2Sub = await prisma.submission.findFirst({
         where: { studentId: student.id, weekNumber: 2, status: "APPROVED" },
         orderBy: { submittedAt: "desc" },
       })
       if (w2Sub) {
-        const w2Fetch = await fetchDocText(w2Sub.workbookUrl)
+        w2Fetch = await fetchDocText(w2Sub.workbookUrl)
         if (w2Fetch.success) offerFetch = w2Fetch
       }
     }
 
-    if (!offerFetch?.success) {
-      const holdReason = !w4Sub
-        ? "No approved Week 4 or Week 2 offer found — back-alignment check requires an approved offer submission first"
-        : `Cannot load approved offer for back-alignment (tried Week 4 and Week 2): ${offerFetch?.reason ?? "URL unreadable"}`
+    if (!offerFetch) {
+      // Build a diagnostic message that shows exactly which URLs were tried and why each failed
+      const lines: string[] = ["Cannot load offer for back-alignment —"]
+      if (w4Sub) {
+        lines.push(`Week 4 URL "${w4Sub.workbookUrl}": ${w4Fetch?.reason ?? "fetch failed"}`)
+      } else {
+        lines.push("Week 4: no approved submission found")
+      }
+      if (w2Sub) {
+        lines.push(`Week 2 URL "${w2Sub.workbookUrl}": ${w2Fetch?.reason ?? "fetch failed"}`)
+      } else {
+        lines.push("Week 2: no approved submission found")
+      }
+      const holdReason = lines.join(" | ")
       await writeToDb(submissionId, "held_for_input", holdReason, "hold", null, null, null)
       return makeHoldResult(submissionId, weekNumber, holdReason, {
         fileType,
