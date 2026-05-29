@@ -228,13 +228,31 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
   let priorWeek6Loaded = false
 
   if (isWeek6SalesCopy || isWeek7) {
+    // Try Week 4 first, fall back to Week 2 — some students submitted
+    // their program offer under Week 2 instead of Week 4.
     const w4Sub = await prisma.submission.findFirst({
       where: { studentId: student.id, weekNumber: 4, status: "APPROVED" },
       orderBy: { submittedAt: "desc" },
     })
-    if (!w4Sub) {
-      const holdReason =
-        "No approved Week 4 offer found — back-alignment check requires an approved Week 4 submission first"
+
+    let offerFetch = w4Sub ? await fetchDocText(w4Sub.workbookUrl) : null
+
+    // If Week 4 missing or its URL is unreadable, try Week 2
+    if (!offerFetch?.success) {
+      const w2Sub = await prisma.submission.findFirst({
+        where: { studentId: student.id, weekNumber: 2, status: "APPROVED" },
+        orderBy: { submittedAt: "desc" },
+      })
+      if (w2Sub) {
+        const w2Fetch = await fetchDocText(w2Sub.workbookUrl)
+        if (w2Fetch.success) offerFetch = w2Fetch
+      }
+    }
+
+    if (!offerFetch?.success) {
+      const holdReason = !w4Sub
+        ? "No approved Week 4 or Week 2 offer found — back-alignment check requires an approved offer submission first"
+        : `Cannot load approved offer for back-alignment (tried Week 4 and Week 2): ${offerFetch?.reason ?? "URL unreadable"}`
       await writeToDb(submissionId, "held_for_input", holdReason, "hold", null, null, null)
       return makeHoldResult(submissionId, weekNumber, holdReason, {
         fileType,
@@ -245,20 +263,7 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
         dbWritten: true,
       })
     }
-    const w4Fetch = await fetchDocText(w4Sub.workbookUrl)
-    if (!w4Fetch.success) {
-      const holdReason = `Cannot load approved Week 4 offer for back-alignment: ${w4Fetch.reason}`
-      await writeToDb(submissionId, "held_for_input", holdReason, "hold", null, null, null)
-      return makeHoldResult(submissionId, weekNumber, holdReason, {
-        fileType,
-        docId,
-        reviewerStrategy,
-        patternsUsed: patternRows.map((r) => ({ deliverableName: r.deliverableName, templateVariant: r.templateVariant })),
-        inputs: { nichePresent, launchInfoPresent, priorWeek4Loaded: false, priorWeek6Loaded: false },
-        dbWritten: true,
-      })
-    }
-    priorWeek4Text = w4Fetch.text
+    priorWeek4Text = offerFetch.text
     priorWeek4Loaded = true
   }
 
