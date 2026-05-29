@@ -58,11 +58,9 @@ export async function GET(request: Request) {
         break
 
       case "HEAD_COACH":
-        // Head coaches see submissions in HEAD_COACH_REVIEW status
+        // Head coaches see all submissions; client filters by status as needed
         submissions = await prisma.submission.findMany({
-          where: {
-            status: (status as any) || "HEAD_COACH_REVIEW",
-          },
+          where: status ? { status: status as any } : undefined,
           include: {
             student: { select: { name: true, email: true, studentClass: true, launchStrategy: true, launchPricing: true, launchPrice: true, launchEventTopic: true, approvedEventTitle: true, niche: true } },
             coach: { select: { name: true, email: true } },

@@ -141,6 +141,7 @@ export default function HeadCoachDashboard() {
   // Search / filter state
   const [reviewSearch, setReviewSearch] = useState("")
   const [reviewStudentFilter, setReviewStudentFilter] = useState("")
+  const [reviewStatusFilter, setReviewStatusFilter] = useState("HEAD_COACH_REVIEW")
   const [queueSearch, setQueueSearch] = useState("")
   const [queueStudentFilter, setQueueStudentFilter] = useState("")
 
@@ -443,6 +444,7 @@ export default function HeadCoachDashboard() {
   // Derived filter helpers
   const reviewStudents = Array.from(new Set(submissions.map((s) => s.student.name))).sort()
   const filteredSubmissions = submissions.filter((s) => {
+    if (reviewStatusFilter && s.status !== reviewStatusFilter) return false
     if (reviewStudentFilter && s.student.name !== reviewStudentFilter) return false
     if (reviewSearch) {
       const q = reviewSearch.toLowerCase()
@@ -544,7 +546,7 @@ export default function HeadCoachDashboard() {
             <p className="text-sm text-muted-foreground mb-4">Coach-approved submissions awaiting your final approval</p>
 
             {/* Search + filter */}
-            {!loading && submissions.length > 0 && (
+            {!loading && (
               <div className="flex flex-wrap gap-2 mb-4">
                 <div className="relative flex-1 min-w-48">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -568,9 +570,21 @@ export default function HeadCoachDashboard() {
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </select>
-                {(reviewSearch || reviewStudentFilter) && (
+                <select
+                  value={reviewStatusFilter}
+                  onChange={(e) => setReviewStatusFilter(e.target.value)}
+                  className="rounded-lg border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="HEAD_COACH_REVIEW">Pending Review</option>
+                  <option value="">All Statuses</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="NEEDS_CORRECTION">Needs Correction</option>
+                  <option value="COACH_REVIEW">Coach Review</option>
+                  <option value="PENDING">Pending</option>
+                </select>
+                {(reviewSearch || reviewStudentFilter || reviewStatusFilter !== "HEAD_COACH_REVIEW") && (
                   <button
-                    onClick={() => { setReviewSearch(""); setReviewStudentFilter("") }}
+                    onClick={() => { setReviewSearch(""); setReviewStudentFilter(""); setReviewStatusFilter("HEAD_COACH_REVIEW") }}
                     className="rounded-lg border border-input bg-white px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Clear
@@ -589,7 +603,7 @@ export default function HeadCoachDashboard() {
                   </div>
                 ))}
               </div>
-            ) : submissions.length === 0 ? (
+            ) : submissions.filter((s) => s.status === "HEAD_COACH_REVIEW").length === 0 && reviewStatusFilter === "HEAD_COACH_REVIEW" && !reviewSearch && !reviewStudentFilter ? (
               <div className="rounded-xl border border-dashed border-border bg-white py-12 text-center">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 mb-3">
                   <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -731,45 +745,47 @@ export default function HeadCoachDashboard() {
                           </div>
                         )}
 
-                        {reviewingId === submission.id ? (
-                          <div className="mt-4 space-y-4 border-t border-border pt-4">
-                            <div className="space-y-1.5">
-                              <Label htmlFor="feedback" className="text-sm font-medium">Feedback Notes</Label>
-                              <Textarea
-                                id="feedback"
-                                placeholder="Provide feedback if sending back..."
-                                value={feedback}
-                                onChange={(e) => setFeedback(e.target.value)}
-                                rows={3}
-                                className="resize-none"
-                              />
+                        {submission.status === "HEAD_COACH_REVIEW" && (
+                          reviewingId === submission.id ? (
+                            <div className="mt-4 space-y-4 border-t border-border pt-4">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="feedback" className="text-sm font-medium">Feedback Notes</Label>
+                                <Textarea
+                                  id="feedback"
+                                  placeholder="Provide feedback if sending back..."
+                                  value={feedback}
+                                  onChange={(e) => setFeedback(e.target.value)}
+                                  rows={3}
+                                  className="resize-none"
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button onClick={() => handleReview(submission.id, "approve")} className="bg-emerald-600 hover:bg-emerald-700 gap-1.5">
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                  Final Approval
+                                </Button>
+                                <Button onClick={() => handleReview(submission.id, "sendToCoach")} variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1.5">
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                  </svg>
+                                  Send Back to Coach
+                                </Button>
+                                <Button onClick={() => handleReview(submission.id, "sendToStudent")} variant="destructive" className="gap-1.5">
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                  </svg>
+                                  Send Back to Student
+                                </Button>
+                                <Button onClick={() => { setReviewingId(null); setFeedback("") }} variant="outline">Cancel</Button>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button onClick={() => handleReview(submission.id, "approve")} className="bg-emerald-600 hover:bg-emerald-700 gap-1.5">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                                Final Approval
-                              </Button>
-                              <Button onClick={() => handleReview(submission.id, "sendToCoach")} variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1.5">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                                </svg>
-                                Send Back to Coach
-                              </Button>
-                              <Button onClick={() => handleReview(submission.id, "sendToStudent")} variant="destructive" className="gap-1.5">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                                </svg>
-                                Send Back to Student
-                              </Button>
-                              <Button onClick={() => { setReviewingId(null); setFeedback("") }} variant="outline">Cancel</Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button onClick={() => setReviewingId(submission.id)} className="mt-4" size="sm">
-                            Review for Final Approval
-                          </Button>
+                          ) : (
+                            <Button onClick={() => setReviewingId(submission.id)} className="mt-4" size="sm">
+                              Review for Final Approval
+                            </Button>
+                          )
                         )}
                       </div>
                     </div>
