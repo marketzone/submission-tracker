@@ -138,6 +138,12 @@ export default function HeadCoachDashboard() {
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [triggerResult, setTriggerResult] = useState<string | null>(null)
 
+  // Search / filter state
+  const [reviewSearch, setReviewSearch] = useState("")
+  const [reviewStudentFilter, setReviewStudentFilter] = useState("")
+  const [queueSearch, setQueueSearch] = useState("")
+  const [queueStudentFilter, setQueueStudentFilter] = useState("")
+
   useEffect(() => {
     fetchData()
     fetchAiQueue()
@@ -434,6 +440,37 @@ export default function HeadCoachDashboard() {
     LAUNCH_CLASS: "Launch Class",
   }
 
+  // Derived filter helpers
+  const reviewStudents = Array.from(new Set(submissions.map((s) => s.student.name))).sort()
+  const filteredSubmissions = submissions.filter((s) => {
+    if (reviewStudentFilter && s.student.name !== reviewStudentFilter) return false
+    if (reviewSearch) {
+      const q = reviewSearch.toLowerCase()
+      return (
+        s.student.name.toLowerCase().includes(q) ||
+        s.workbookTitle.toLowerCase().includes(q) ||
+        s.weekNumber.toString() === q ||
+        `week ${s.weekNumber}` === q
+      )
+    }
+    return true
+  })
+
+  const queueStudents = Array.from(new Set(aiQueue.map((q) => q.student.name))).sort()
+  const filteredAiQueue = aiQueue.filter((item) => {
+    if (queueStudentFilter && item.student.name !== queueStudentFilter) return false
+    if (queueSearch) {
+      const q = queueSearch.toLowerCase()
+      return (
+        item.student.name.toLowerCase().includes(q) ||
+        item.workbookTitle.toLowerCase().includes(q) ||
+        item.weekNumber.toString() === q ||
+        `week ${item.weekNumber}` === q
+      )
+    }
+    return true
+  })
+
   const eligibleForTrigger = submissions.filter((s) => s.status === "HEAD_COACH_REVIEW")
   const alreadyQueued = new Set(aiQueue.map((q) => q.id))
 
@@ -506,6 +543,42 @@ export default function HeadCoachDashboard() {
             <h2 className="text-base font-semibold text-foreground mb-1">Final Review Queue</h2>
             <p className="text-sm text-muted-foreground mb-4">Coach-approved submissions awaiting your final approval</p>
 
+            {/* Search + filter */}
+            {!loading && submissions.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="relative flex-1 min-w-48">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    placeholder="Search name, week, or submission…"
+                    className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <select
+                  value={reviewStudentFilter}
+                  onChange={(e) => setReviewStudentFilter(e.target.value)}
+                  className="rounded-lg border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">All students</option>
+                  {reviewStudents.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                {(reviewSearch || reviewStudentFilter) && (
+                  <button
+                    onClick={() => { setReviewSearch(""); setReviewStudentFilter("") }}
+                    className="rounded-lg border border-input bg-white px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div className="space-y-4">
                 {[...Array(2)].map((_, i) => (
@@ -526,9 +599,14 @@ export default function HeadCoachDashboard() {
                 <p className="text-sm font-medium text-foreground">All clear!</p>
                 <p className="text-sm text-muted-foreground mt-1">No submissions awaiting final review</p>
               </div>
+            ) : filteredSubmissions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-white py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No matches</p>
+                <p className="text-sm text-muted-foreground mt-1">Try a different search or clear the filter</p>
+              </div>
             ) : (
               <div className="space-y-4">
-                {submissions.map((submission) => {
+                {filteredSubmissions.map((submission) => {
                   const sc = statusConfig[submission.status] ?? { label: submission.status, className: "bg-gray-100 text-gray-700 border-gray-200" }
                   return (
                     <div key={submission.id} className="bg-white rounded-xl border border-border shadow-sm">
@@ -757,6 +835,42 @@ export default function HeadCoachDashboard() {
             </CardContent>
           </Card>
 
+          {/* Search + filter */}
+          {!aiQueueLoading && aiQueue.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={queueSearch}
+                  onChange={(e) => setQueueSearch(e.target.value)}
+                  placeholder="Search name, week, or submission…"
+                  className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <select
+                value={queueStudentFilter}
+                onChange={(e) => setQueueStudentFilter(e.target.value)}
+                className="rounded-lg border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">All students</option>
+                {queueStudents.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              {(queueSearch || queueStudentFilter) && (
+                <button
+                  onClick={() => { setQueueSearch(""); setQueueStudentFilter("") }}
+                  className="rounded-lg border border-input bg-white px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Queue items */}
           {aiQueueLoading ? (
             <div className="space-y-4">
@@ -778,9 +892,14 @@ export default function HeadCoachDashboard() {
               <p className="text-sm font-medium text-foreground">Queue is clear</p>
               <p className="text-sm text-muted-foreground mt-1">No AI verdicts pending your review</p>
             </div>
+          ) : filteredAiQueue.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-white py-10 text-center">
+              <p className="text-sm font-medium text-foreground">No matches</p>
+              <p className="text-sm text-muted-foreground mt-1">Try a different search or clear the filter</p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {aiQueue.map((item) => {
+              {filteredAiQueue.map((item) => {
                 const fb = item.aiFeedback as Record<string, unknown> | null
                 const triageVerdict = item.aiTriageVerdict ?? "unknown"
                 const triageReason = (fb?.triage_reason as string) ?? ""
