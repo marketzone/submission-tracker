@@ -449,8 +449,8 @@ export default function HeadCoachDashboard() {
       return (
         s.student.name.toLowerCase().includes(q) ||
         s.workbookTitle.toLowerCase().includes(q) ||
-        s.weekNumber.toString() === q ||
-        `week ${s.weekNumber}` === q
+        getWeekLabel(s.weekNumber).toLowerCase().includes(q) ||
+        s.weekNumber.toString().includes(q)
       )
     }
     return true
@@ -464,8 +464,8 @@ export default function HeadCoachDashboard() {
       return (
         item.student.name.toLowerCase().includes(q) ||
         item.workbookTitle.toLowerCase().includes(q) ||
-        item.weekNumber.toString() === q ||
-        `week ${item.weekNumber}` === q
+        getWeekLabel(item.weekNumber).toLowerCase().includes(q) ||
+        item.weekNumber.toString().includes(q)
       )
     }
     return true
