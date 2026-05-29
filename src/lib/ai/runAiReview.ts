@@ -256,12 +256,14 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
       // Build a diagnostic message that shows exactly which URLs were tried and why each failed
       const lines: string[] = ["Cannot load offer for back-alignment —"]
       if (w4Sub) {
-        lines.push(`Week 4 URL "${w4Sub.workbookUrl}": ${w4Fetch?.reason ?? "fetch failed"}`)
+        const w4Reason = w4Fetch && !w4Fetch.success ? w4Fetch.reason : "fetch failed"
+        lines.push(`Week 4 URL "${w4Sub.workbookUrl}": ${w4Reason}`)
       } else {
         lines.push("Week 4: no approved submission found")
       }
       if (w2Sub) {
-        lines.push(`Week 2 URL "${w2Sub.workbookUrl}": ${w2Fetch?.reason ?? "fetch failed"}`)
+        const w2Reason = w2Fetch && !w2Fetch.success ? w2Fetch.reason : "fetch failed"
+        lines.push(`Week 2 URL "${w2Sub.workbookUrl}": ${w2Reason}`)
       } else {
         lines.push("Week 2: no approved submission found")
       }
