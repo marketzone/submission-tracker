@@ -1,5 +1,5 @@
 import type { WeekCriteria } from "@prisma/client"
-import { MASTER_RUBRIC_V1 } from "./masterRubric"
+import { ACTIVE_RUBRIC } from "./masterRubric"
 
 export interface ReviewPromptInput {
   weekNumber: number
@@ -50,20 +50,7 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
 
   let patternBlock: string
 
-  if (weekNumber === 3) {
-    // Week 3: students submit both ad copy + ad video as one deliverable.
-    // Inject both patterns with an intro so the model reviews each part.
-    patternBlock = [
-      `<applicable_patterns>`,
-      `This is a Week 3 submission. The student is expected to submit both ad copy scripts (three angles) and an ad video script as one deliverable. Review each part of the submission against its applicable pattern below.`,
-      "",
-      ...patternRows.map(
-        (r) =>
-          `<pattern variant="${r.templateVariant ?? "none"}" deliverable="${r.deliverableName}">\n${stripBuildNotes(r.templatePattern)}\n</pattern>`
-      ),
-      `</applicable_patterns>`,
-    ].join("\n")
-  } else if (weekNumber === 6 && patternRows.length > 1) {
+  if (weekNumber === 6 && patternRows.length > 1) {
     // Week 6 sales copy: multiple variant patterns injected; model detects which the student used.
     // (Single-row Week 6 = webinar/slides, handled by the else branch below.)
     patternBlock = [
@@ -117,7 +104,7 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   const userMessage = parts.join("\n")
 
   return {
-    systemPrompt: MASTER_RUBRIC_V1,
+    systemPrompt: ACTIVE_RUBRIC,
     userMessage,
     patternsUsed,
   }
