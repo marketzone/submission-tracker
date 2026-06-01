@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { fetchDocText } from "./fetchDocText"
 import { assembleLaunchInfo } from "./assembleLaunchInfo"
 import { lookupWeekCriteria, deriveReviewerStrategy } from "./weekCriteriaLookup"
+import { routeByLabel } from "./labelRouter"
 import { buildReviewPrompt } from "./buildReviewPrompt"
 import { RUBRIC_VERSION } from "./masterRubric"
 import { Prisma, type WeekCriteria } from "@prisma/client"
@@ -104,27 +105,6 @@ async function writeToDb(
   })
 }
 
-// ── Select the right pattern rows for this submission ─────────────────────────
-// Week 6 has 4 rows: 1 webinar (slides) + 3 sales-copy variants (doc).
-// Use file type to pick the right subset — presentations are always Slides,
-// sales pages are always Docs. This is reliable in practice.
-function filterPatternsForSubmission(
-  criteriaRows: WeekCriteria[],
-  weekNumber: number,
-  fileType: "doc" | "slides" | "unknown"
-): WeekCriteria[] {
-  if (weekNumber !== 6) return criteriaRows
-
-  // In the week_criteria seed, the Week 6 webinar pattern is stored with
-  // templateVariant = null (the three sales-copy variants have explicit slugs).
-  if (fileType === "slides") {
-    const webinar = criteriaRows.filter((r) => r.templateVariant === null)
-    return webinar.length > 0 ? webinar : criteriaRows
-  } else {
-    const salesCopy = criteriaRows.filter((r) => r.templateVariant !== null)
-    return salesCopy.length > 0 ? salesCopy : criteriaRows
-  }
-}
 
 // ── Main review function ───────────────────────────────────────────────────────
 export async function runAiReview(submissionId: string): Promise<AiReviewRunResult> {
@@ -215,11 +195,47 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
     )
   }
 
-  // Filter to the patterns relevant for this file type (critical for Week 6)
-  const patternRows = filterPatternsForSubmission(allCriteriaRows, weekNumber, fileType)
+  // ── 4b. Route by label for weeks with multiple deliverables ─────────────────
+  // Weeks 3 and 6 each have multiple patterns; use workbookTitle keywords to
+  // select the correct one(s). All other weeks pass through unchanged.
+  let patternRows: WeekCriteria[]
+  let isWeek6SalesCopy = false
+
+  if (weekNumber === 3 || weekNumber === 6) {
+    const route = routeByLabel(weekNumber, submission.workbookTitle)
+    if (route.outcome === "hold") {
+      await writeToDb(submissionId, "held_for_input", route.reason, "hold", null, null, null)
+      return makeHoldResult(submissionId, weekNumber, route.reason, {
+        fileType,
+        docId,
+        reviewerStrategy,
+        patternsUsed: [],
+        inputs: { nichePresent, launchInfoPresent, priorWeek4Loaded: false, priorWeek6Loaded: false },
+        dbWritten: true,
+      })
+    }
+
+    const { deliverableType } = route
+
+    if (weekNumber === 3) {
+      patternRows = allCriteriaRows.filter((r) =>
+        deliverableType === "ad_video"
+          ? r.templateVariant === "ad_video"
+          : r.templateVariant === "ad_copy"
+      )
+    } else {
+      // Week 6: webinar → single null-variant row; sales_copy → all three variant rows
+      patternRows =
+        deliverableType === "webinar"
+          ? allCriteriaRows.filter((r) => r.templateVariant === null)
+          : allCriteriaRows.filter((r) => r.templateVariant !== null)
+      isWeek6SalesCopy = deliverableType === "sales_copy"
+    }
+  } else {
+    patternRows = allCriteriaRows
+  }
 
   // ── 5. Load prior approved submissions (Week 6 sales copy + Week 7) ───────
-  const isWeek6SalesCopy = weekNumber === 6 && fileType !== "slides"
   const isWeek7 = weekNumber === 7
 
   let priorWeek4Text: string | null = null
@@ -346,7 +362,9 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
     })
   }
 
-  const client = new Anthropic({ apiKey })
+  // timeout slightly under maxDuration so SDK throws a catchable error
+  // rather than Vercel killing the function mid-flight (which skips writeToDb)
+  const client = new Anthropic({ apiKey, timeout: 550_000 })
 
   let rawResponse: string
   let tokenUsage: { inputTokens: number; outputTokens: number }
