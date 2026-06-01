@@ -30,10 +30,14 @@ const HOLD_AMBIGUOUS =
 
 // ── Keyword sets ──────────────────────────────────────────────────────────────
 
-// Week 3: "video" anywhere → ad video; "ad copy", "captions", "script" (no video) → ad copy.
-// "video script" contains "video" so it routes correctly without a compound check.
-const W3_VIDEO_RE  = /\bvideo\b/i
-const W3_COPY_RE   = /\bad[\s-]?copy\b|\bcaptions?\b|\bscripts?\b/i
+// Week 3:
+//   "video" → ad_video (takes priority; "video script" contains both "video" and "script"
+//              but "video" wins per spec: "script (without 'video') → ad copy").
+//   Ambiguous only when explicit ad-copy signal ("ad copy" or "captions") coexists with "video".
+//   Bare "script" alone → ad_copy (not ambiguous when "video" absent).
+const W3_VIDEO_RE   = /\bvideo\b/i
+const W3_ADCOPY_RE  = /\bad[\s-]?copy\b|\bcaptions?\b/i   // explicit ad-copy signal
+const W3_SCRIPT_RE  = /\bscripts?\b/i                       // weaker signal; yields to video
 
 // Week 6: webinar group vs sales copy group.
 const W6_WEBINAR_RE    = /\bwebinar\b|\bpresentation\b|\bdeck\b|\bslides?\b/i
@@ -47,12 +51,15 @@ export function routeByLabel(weekNumber: number, workbookTitle: string): LabelRo
   const t = workbookTitle ?? ""
 
   if (weekNumber === 3) {
-    const isVideo   = W3_VIDEO_RE.test(t)
-    const isAdCopy  = W3_COPY_RE.test(t)
+    const isVideo      = W3_VIDEO_RE.test(t)
+    const isExplicitCopy = W3_ADCOPY_RE.test(t)  // "ad copy" or "captions"
+    const isScript     = W3_SCRIPT_RE.test(t)     // bare "script" — yields to video
 
-    if (isVideo && isAdCopy) return { outcome: "hold", reason: HOLD_AMBIGUOUS }
-    if (isVideo)  return { outcome: "matched", deliverableType: "ad_video" }
-    if (isAdCopy) return { outcome: "matched", deliverableType: "ad_copy" }
+    // Ambiguous only when both explicit signals collide (e.g. "Ad video copy script")
+    if (isVideo && isExplicitCopy) return { outcome: "hold", reason: HOLD_AMBIGUOUS }
+    // "video script" contains "video" + "script", but video wins per spec
+    if (isVideo)                   return { outcome: "matched", deliverableType: "ad_video" }
+    if (isExplicitCopy || isScript) return { outcome: "matched", deliverableType: "ad_copy" }
     return { outcome: "hold", reason: HOLD_W3_UNRECOGNISED }
   }
 
