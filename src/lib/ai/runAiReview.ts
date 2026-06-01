@@ -362,7 +362,9 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
     })
   }
 
-  const client = new Anthropic({ apiKey })
+  // timeout slightly under maxDuration so SDK throws a catchable error
+  // rather than Vercel killing the function mid-flight (which skips writeToDb)
+  const client = new Anthropic({ apiKey, timeout: 550_000 })
 
   let rawResponse: string
   let tokenUsage: { inputTokens: number; outputTokens: number }
