@@ -13,6 +13,7 @@ import { Prisma } from "@prisma/client"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { formatCoachFeedback } from "@/lib/ai/formatCoachFeedback"
+import { sendEmail, emailTemplates } from "@/lib/email"
 
 type AiFeedbackJson = Record<string, unknown>
 
@@ -101,14 +102,14 @@ export async function POST(
   }
 
   const action = body.action as string | undefined
-  if (!action || !["approve", "edit_approve", "override"].includes(action)) {
-    return NextResponse.json({ error: "action must be approve | edit_approve | override" }, { status: 400 })
+  if (!action || !["approve", "edit_approve", "override", "send_back", "edit_send_back"].includes(action)) {
+    return NextResponse.json({ error: "action must be approve | edit_approve | override | send_back | edit_send_back" }, { status: 400 })
   }
 
-  // Load submission
+  // Load submission — include email for send_back notification
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
-    include: { student: { select: { id: true, name: true } } },
+    include: { student: { select: { id: true, name: true, email: true } } },
   })
 
   if (!submission) {
@@ -297,6 +298,118 @@ export async function POST(
       action: "override",
       aiVerdict,
       finalVerdict,
+      editsLogged: editRows.length,
+    })
+  }
+
+  // ── send_back ─────────────────────────────────────────────────────────────────
+  // Agree with the AI hold verdict and send the submission back to the student
+  // with the AI's formatted feedback. Sets status = NEEDS_CORRECTION.
+  if (action === "send_back") {
+    const formattedFeedback = aiFeedback
+      ? formatCoachFeedback(aiFeedback, weekNumber)
+      : null
+
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        aiReviewStatus: "HUMAN_REVIEWED",
+        status: "NEEDS_CORRECTION",
+        coachFeedback: formattedFeedback,
+        headCoachId,
+        headReviewedAt: new Date(),
+      },
+    })
+
+    const email = emailTemplates.statusChanged(
+      submission.student.name,
+      submission.workbookTitle,
+      "Needs Correction",
+      formattedFeedback ?? undefined
+    )
+    await sendEmail({ to: submission.student.email, subject: email.subject, html: email.html })
+
+    return NextResponse.json({
+      submissionId,
+      action: "send_back",
+      finalVerdict: "hold",
+      editsLogged: 0,
+    })
+  }
+
+  // ── edit_send_back ────────────────────────────────────────────────────────────
+  // Edit the AI feedback, then send back to the student with NEEDS_CORRECTION.
+  if (action === "edit_send_back") {
+    const editedFieldsInput = body.editedFields as { fieldName: string; humanValue: string }[] | undefined
+    if (!editedFieldsInput || !Array.isArray(editedFieldsInput)) {
+      return NextResponse.json({ error: "editedFields array required for edit_send_back" }, { status: 400 })
+    }
+
+    const aiFieldValues = aiFeedback ? flattenFeedbackForLog(aiFeedback) : {}
+
+    const editRows = editedFieldsInput
+      .filter((f) => typeof f.fieldName === "string" && typeof f.humanValue === "string")
+      .map((f) => ({
+        fieldName: f.fieldName,
+        aiValue: aiFieldValues[f.fieldName] ?? "",
+        humanValue: f.humanValue,
+      }))
+
+    const editedFeedback: AiFeedbackJson = aiFeedback ? { ...aiFeedback } : {}
+    for (const edit of editedFieldsInput) {
+      const { fieldName, humanValue } = edit
+      if (fieldName === "persuasive_strength.notes") {
+        const ps = (editedFeedback.persuasive_strength as Record<string, unknown>) ?? {}
+        editedFeedback.persuasive_strength = { ...ps, notes: humanValue }
+      } else if (fieldName === "top_3_fixes") {
+        editedFeedback.top_3_fixes = humanValue.split("\n---\n")
+      } else if (fieldName === "specific_rewrites") {
+        editedFeedback.specific_rewrites = humanValue.split("\n---\n")
+      } else {
+        editedFeedback[fieldName] = humanValue
+      }
+    }
+
+    const formattedFeedback = formatCoachFeedback(editedFeedback, weekNumber)
+
+    await prisma.$transaction([
+      prisma.submission.update({
+        where: { id: submissionId },
+        data: {
+          aiReviewStatus: "HUMAN_REVIEWED",
+          status: "NEEDS_CORRECTION",
+          aiFeedback: editedFeedback as unknown as Prisma.InputJsonValue,
+          coachFeedback: formattedFeedback,
+          headCoachId,
+          headReviewedAt: new Date(),
+        },
+      }),
+    ])
+
+    await writeEditLogs(
+      submissionId,
+      submission.student.id,
+      weekNumber,
+      deliverableName,
+      templateVariant,
+      reviewModelVersion,
+      aiVerdict,
+      "hold",
+      editRows
+    )
+
+    const email = emailTemplates.statusChanged(
+      submission.student.name,
+      submission.workbookTitle,
+      "Needs Correction",
+      formattedFeedback ?? undefined
+    )
+    await sendEmail({ to: submission.student.email, subject: email.subject, html: email.html })
+
+    return NextResponse.json({
+      submissionId,
+      action: "edit_send_back",
+      finalVerdict: "hold",
       editsLogged: editRows.length,
     })
   }

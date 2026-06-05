@@ -352,12 +352,12 @@ export default function HeadCoachDashboard() {
 
   const handleQueueAction = async (
     submissionId: string,
-    action: "approve" | "edit_approve" | "override"
+    action: "approve" | "edit_approve" | "override" | "send_back" | "edit_send_back"
   ) => {
     setProcessingQueueId(submissionId)
     try {
       let body: Record<string, unknown> = { action }
-      if (action === "edit_approve") {
+      if (action === "edit_approve" || action === "edit_send_back") {
         body.editedFields = Object.entries(editedFields).map(([fieldName, humanValue]) => ({
           fieldName,
           humanValue,
@@ -373,12 +373,19 @@ export default function HeadCoachDashboard() {
         body: JSON.stringify(body),
       })
       if (res.ok) {
+        // All actions remove from the AI queue once processed
         setAiQueue((prev) => prev.filter((item) => item.id !== submissionId))
-        // approve / edit_approve / override-proceed all set status=APPROVED,
-        // so the submission leaves the Final Review queue too.
-        if (action !== "override" || overrideVerdict === "proceed") {
+
+        if (action === "approve" || action === "edit_approve" ||
+            (action === "override" && overrideVerdict === "proceed")) {
+          // Submission is now APPROVED — remove from Final Reviews too
           setSubmissions((prev) => prev.filter((s) => s.id !== submissionId))
+        } else if (action === "send_back" || action === "edit_send_back") {
+          // Submission is now NEEDS_CORRECTION — refresh so Final Reviews
+          // shows updated status if the filter is widened later
+          fetchData()
         }
+
         setEditingQueueId(null)
         setEditedFields({})
         setOverrideId(null)
@@ -1155,6 +1162,17 @@ export default function HeadCoachDashboard() {
                                 {isProcessing ? "Saving..." : "Save Edits + Approve"}
                               </Button>
                               <Button
+                                onClick={() => handleQueueAction(item.id, "edit_send_back")}
+                                disabled={isProcessing}
+                                size="sm"
+                                className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                </svg>
+                                {isProcessing ? "Sending..." : "Save Edits + Send Back"}
+                              </Button>
+                              <Button
                                 onClick={() => { setEditingQueueId(null); setEditedFields({}) }}
                                 variant="outline"
                                 size="sm"
@@ -1174,6 +1192,17 @@ export default function HeadCoachDashboard() {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                 </svg>
                                 {isProcessing ? "Approving..." : "Approve"}
+                              </Button>
+                              <Button
+                                onClick={() => handleQueueAction(item.id, "send_back")}
+                                disabled={isProcessing}
+                                size="sm"
+                                className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                </svg>
+                                {isProcessing ? "Sending..." : "Send Back to Student"}
                               </Button>
                               <Button
                                 onClick={() => {
