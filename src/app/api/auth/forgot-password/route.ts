@@ -32,12 +32,12 @@ export async function POST(request: Request) {
         },
       })
 
-      // Derive base URL from the incoming request so the link always uses
-      // the domain the student is actually on (custom domain or Vercel URL).
-      // Explicit NEXTAUTH_URL env var still overrides if set.
+      // Always derive the base URL from the incoming request — this is the
+      // domain the student is actually on and guarantees the link works.
+      // NEXTAUTH_URL is intentionally NOT used here: it may be set to a
+      // different domain (or localhost) and would generate a broken link.
       const requestUrl = new URL(request.url)
-      const baseUrl = process.env.NEXTAUTH_URL ||
-        `${requestUrl.protocol}//${requestUrl.host}`
+      const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`
       const resetLink = `${baseUrl}/reset-password?token=${resetToken}`
 
       // Send email
