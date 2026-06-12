@@ -318,6 +318,7 @@ export async function POST(
         coachFeedback: formattedFeedback,
         headCoachId,
         headReviewedAt: new Date(),
+        returnedByHeadCoach: true,
       },
     })
 
@@ -382,6 +383,7 @@ export async function POST(
           coachFeedback: formattedFeedback,
           headCoachId,
           headReviewedAt: new Date(),
+          returnedByHeadCoach: true,
         },
       }),
     ])
