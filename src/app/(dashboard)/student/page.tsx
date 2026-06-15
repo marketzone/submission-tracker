@@ -96,6 +96,7 @@ export default function StudentDashboard() {
   const [launchStrategy, setLaunchStrategy] = useState("")
   const [launchPricing, setLaunchPricing] = useState("")
   const [launchPrice, setLaunchPrice] = useState("")
+  const [launchPriceCurrency, setLaunchPriceCurrency] = useState("USD")
   const [launchEventTopic, setLaunchEventTopic] = useState("")
   const [niche, setNiche] = useState("")
   const [approvedEventTitle, setApprovedEventTitle] = useState("")
@@ -135,7 +136,15 @@ export default function StudentDashboard() {
       const data = await response.json()
       setLaunchStrategy(data.launchStrategy || "")
       setLaunchPricing(data.launchPricing || "")
-      setLaunchPrice(data.launchPrice || "")
+      const rawPrice = data.launchPrice || ""
+      if (rawPrice.includes("|")) {
+        const [curr, amt] = rawPrice.split("|", 2)
+        setLaunchPriceCurrency(curr)
+        setLaunchPrice(amt)
+      } else {
+        setLaunchPriceCurrency("USD")
+        setLaunchPrice(rawPrice)
+      }
       setLaunchEventTopic(data.launchEventTopic || "")
       setNiche(data.niche || "")
       setApprovedEventTitle(data.approvedEventTitle || "")
@@ -199,7 +208,7 @@ export default function StudentDashboard() {
       const response = await fetch("/api/users/launch-info", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ launchStrategy, launchPricing, launchPrice, launchEventTopic, niche }),
+        body: JSON.stringify({ launchStrategy, launchPricing, launchPrice: launchPrice ? `${launchPriceCurrency}|${launchPrice}` : "", launchEventTopic, niche }),
       })
       if (response.ok) {
         setSaveLaunchSuccess(true)
@@ -328,15 +337,21 @@ export default function StudentDashboard() {
                 {(launchPricing === "Pay What You Want" || launchPricing === "Low Ticket") && (
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-sm text-muted-foreground shrink-0">Price:</span>
-                    <div className="relative w-36">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                      <Input
-                        placeholder="e.g. 47"
-                        value={launchPrice}
-                        onChange={(e) => setLaunchPrice(e.target.value)}
-                        className="h-9 pl-7 w-full"
-                      />
-                    </div>
+                    <select
+                      value={launchPriceCurrency}
+                      onChange={(e) => setLaunchPriceCurrency(e.target.value)}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="USD">$ USD</option>
+                      <option value="NGN">₦ NGN</option>
+                      <option value="GBP">£ GBP</option>
+                    </select>
+                    <Input
+                      placeholder="e.g. 47"
+                      value={launchPrice}
+                      onChange={(e) => setLaunchPrice(e.target.value)}
+                      className="h-9 w-28"
+                    />
                   </div>
                 )}
               </div>
@@ -597,15 +612,21 @@ export default function StudentDashboard() {
                 {(launchPricing === "Pay What You Want" || launchPricing === "Low Ticket") && (
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-sm text-muted-foreground shrink-0">Price:</span>
-                    <div className="relative w-36">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                      <Input
-                        placeholder="e.g. 47"
-                        value={launchPrice}
-                        onChange={(e) => setLaunchPrice(e.target.value)}
-                        className="h-9 pl-7 w-full"
-                      />
-                    </div>
+                    <select
+                      value={launchPriceCurrency}
+                      onChange={(e) => setLaunchPriceCurrency(e.target.value)}
+                      className="h-9 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="USD">$ USD</option>
+                      <option value="NGN">₦ NGN</option>
+                      <option value="GBP">£ GBP</option>
+                    </select>
+                    <Input
+                      placeholder="e.g. 47"
+                      value={launchPrice}
+                      onChange={(e) => setLaunchPrice(e.target.value)}
+                      className="h-9 w-28"
+                    />
                   </div>
                 )}
               </div>

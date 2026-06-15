@@ -59,6 +59,16 @@ function SkeletonCard() {
   )
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", NGN: "₦", GBP: "£" }
+function formatPrice(raw: string | null | undefined): string {
+  if (!raw) return ""
+  if (raw.includes("|")) {
+    const [curr, amt] = raw.split("|", 2)
+    return `${CURRENCY_SYMBOLS[curr] ?? curr}${amt}`
+  }
+  return `$${raw}`
+}
+
 export default function CoachDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([])
@@ -270,7 +280,7 @@ export default function CoachDashboard() {
                               <span className="font-medium text-indigo-900">Strategy: </span>
                               <span className="text-indigo-800">
                                 {submission.student.launchStrategy}
-                                {submission.student.launchPricing && ` — ${submission.student.launchPricing}${submission.student.launchPrice ? ` ($${submission.student.launchPrice})` : ""}`}
+                                {submission.student.launchPricing && ` — ${submission.student.launchPricing}${submission.student.launchPrice ? ` (${formatPrice(submission.student.launchPrice)})` : ""}`}
                               </span>
                             </p>
                           )}

@@ -77,6 +77,16 @@ interface Coach {
   email: string
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", NGN: "₦", GBP: "£" }
+function formatPrice(raw: string | null | undefined): string {
+  if (!raw) return ""
+  if (raw.includes("|")) {
+    const [curr, amt] = raw.split("|", 2)
+    return `${CURRENCY_SYMBOLS[curr] ?? curr}${amt}`
+  }
+  return `$${raw}`
+}
+
 export default function ProgramManagerPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [students, setStudents] = useState<Student[]>([])
@@ -96,7 +106,7 @@ export default function ProgramManagerPage() {
   const [reassignCoachValue, setReassignCoachValue] = useState("")
   const [reassignSaving, setReassignSaving] = useState(false)
   const [editingLaunchId, setEditingLaunchId] = useState<string | null>(null)
-  const [launchEditValues, setLaunchEditValues] = useState<{ niche: string; launchStrategy: string; launchPricing: string; launchPrice: string; launchEventTopic: string; approvedEventTitle: string }>({ niche: "", launchStrategy: "", launchPricing: "", launchPrice: "", launchEventTopic: "", approvedEventTitle: "" })
+  const [launchEditValues, setLaunchEditValues] = useState<{ niche: string; launchStrategy: string; launchPricing: string; launchPrice: string; launchPriceCurrency: string; launchEventTopic: string; approvedEventTitle: string }>({ niche: "", launchStrategy: "", launchPricing: "", launchPrice: "", launchPriceCurrency: "USD", launchEventTopic: "", approvedEventTitle: "" })
   const [launchSaving, setLaunchSaving] = useState(false)
 
   // Filters for submissions
@@ -356,7 +366,12 @@ export default function ProgramManagerPage() {
       const res = await fetch(`/api/users/${studentId}/update-launch-info`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(launchEditValues),
+        body: JSON.stringify({
+          ...launchEditValues,
+          launchPrice: launchEditValues.launchPrice
+            ? `${launchEditValues.launchPriceCurrency}|${launchEditValues.launchPrice}`
+            : "",
+        }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -781,9 +796,20 @@ export default function ProgramManagerPage() {
                                     <label className="text-xs font-medium text-indigo-900 block mb-1">Pricing Model</label>
                                     <Input value={launchEditValues.launchPricing} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPricing: e.target.value }))} placeholder="Free / PWYW / Low Ticket" className="h-8 text-xs" />
                                   </div>
-                                  <div className="w-28">
+                                  <div>
                                     <label className="text-xs font-medium text-indigo-900 block mb-1">Price</label>
-                                    <Input value={launchEditValues.launchPrice} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPrice: e.target.value }))} placeholder="e.g. 47" className="h-8 text-xs" />
+                                    <div className="flex gap-1">
+                                      <select
+                                        value={launchEditValues.launchPriceCurrency}
+                                        onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPriceCurrency: e.target.value }))}
+                                        className="h-8 rounded-md border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                                      >
+                                        <option value="USD">$ USD</option>
+                                        <option value="NGN">₦ NGN</option>
+                                        <option value="GBP">£ GBP</option>
+                                      </select>
+                                      <Input value={launchEditValues.launchPrice} onChange={(e) => setLaunchEditValues((v) => ({ ...v, launchPrice: e.target.value }))} placeholder="e.g. 47" className="h-8 text-xs w-20" />
+                                    </div>
                                   </div>
                                 </div>
                                 <div>
@@ -807,7 +833,7 @@ export default function ProgramManagerPage() {
                                 {student.launchStrategy && (
                                   <p className="text-xs">
                                     <span className="font-medium text-indigo-900">Strategy:</span>{" "}
-                                    <span className="text-indigo-800">{student.launchStrategy}{student.launchPricing ? ` — ${student.launchPricing}${student.launchPrice ? ` ($${student.launchPrice})` : ""}` : ""}</span>
+                                    <span className="text-indigo-800">{student.launchStrategy}{student.launchPricing ? ` — ${student.launchPricing}${student.launchPrice ? ` (${formatPrice(student.launchPrice)})` : ""}` : ""}</span>
                                   </p>
                                 )}
                                 {student.launchEventTopic && <p className="text-xs"><span className="font-medium text-indigo-900">Content Direction:</span> <span className="text-indigo-800">{student.launchEventTopic}</span></p>}
@@ -819,11 +845,14 @@ export default function ProgramManagerPage() {
                                   className="text-xs text-indigo-600 hover:text-indigo-800 underline underline-offset-2 mt-1 block"
                                   onClick={() => {
                                     setEditingLaunchId(student.id)
+                                    const rawPx = student.launchPrice || ""
+                                    const hasPipe = rawPx.includes("|")
                                     setLaunchEditValues({
                                       niche: student.niche || "",
                                       launchStrategy: student.launchStrategy || "",
                                       launchPricing: student.launchPricing || "",
-                                      launchPrice: student.launchPrice || "",
+                                      launchPrice: hasPipe ? rawPx.split("|", 2)[1] : rawPx,
+                                      launchPriceCurrency: hasPipe ? rawPx.split("|", 2)[0] : "USD",
                                       launchEventTopic: student.launchEventTopic || "",
                                       approvedEventTitle: student.approvedEventTitle || "",
                                     })

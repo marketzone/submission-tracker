@@ -448,6 +448,16 @@ export default function HeadCoachDashboard() {
     LAUNCH_CLASS: "Launch Class",
   }
 
+  const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", NGN: "₦", GBP: "£" }
+  const formatPrice = (raw: string | null | undefined): string => {
+    if (!raw) return ""
+    if (raw.includes("|")) {
+      const [curr, amt] = raw.split("|", 2)
+      return `${CURRENCY_SYMBOLS[curr] ?? curr}${amt}`
+    }
+    return `$${raw}`
+  }
+
   // Derived filter helpers
   const reviewStudents = Array.from(new Set(submissions.map((s) => s.student.name))).sort()
   const filteredSubmissions = submissions.filter((s) => {
@@ -723,7 +733,7 @@ export default function HeadCoachDashboard() {
                                     <span className="font-medium text-indigo-900">Strategy: </span>
                                     <span className="text-indigo-800">
                                       {submission.student.launchStrategy}
-                                      {submission.student.launchPricing && ` — ${submission.student.launchPricing}${submission.student.launchPrice ? ` ($${submission.student.launchPrice})` : ""}`}
+                                      {submission.student.launchPricing && ` — ${submission.student.launchPricing}${submission.student.launchPrice ? ` (${formatPrice(submission.student.launchPrice)})` : ""}`}
                                     </span>
                                   </p>
                                 )}
@@ -1299,7 +1309,7 @@ export default function HeadCoachDashboard() {
                         <span className="font-medium text-indigo-900">Strategy: </span>
                         <span className="text-indigo-800">
                           {student.launchStrategy}
-                          {student.launchPricing && ` — ${student.launchPricing}${student.launchPrice ? ` ($${student.launchPrice})` : ""}`}
+                          {student.launchPricing && ` — ${student.launchPricing}${student.launchPrice ? ` (${formatPrice(student.launchPrice)})` : ""}`}
                         </span>
                       </p>
                     )}
