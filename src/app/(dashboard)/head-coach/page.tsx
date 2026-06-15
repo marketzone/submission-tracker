@@ -352,7 +352,7 @@ export default function HeadCoachDashboard() {
 
   const handleQueueAction = async (
     submissionId: string,
-    action: "approve" | "edit_approve" | "override" | "send_back" | "edit_send_back"
+    action: "approve" | "edit_approve" | "override" | "send_back" | "edit_send_back" | "archive"
   ) => {
     setProcessingQueueId(submissionId)
     try {
@@ -385,6 +385,7 @@ export default function HeadCoachDashboard() {
           // shows updated status if the filter is widened later
           fetchData()
         }
+        // archive: submission stays HEAD_COACH_REVIEW for manual review — no extra update needed
 
         setEditingQueueId(null)
         setEditedFields({})
@@ -1238,6 +1239,19 @@ export default function HeadCoachDashboard() {
                                 className="border-orange-300 text-orange-700 hover:bg-orange-50"
                               >
                                 Override Verdict
+                              </Button>
+                              <Button
+                                onClick={() => handleQueueAction(item.id, "archive")}
+                                disabled={isProcessing}
+                                variant="outline"
+                                size="sm"
+                                className="border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                                title="Remove from AI queue — submission stays in Final Reviews for manual processing"
+                              >
+                                <svg className="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                                </svg>
+                                Archive
                               </Button>
                             </>
                           )}

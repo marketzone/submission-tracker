@@ -102,8 +102,8 @@ export async function POST(
   }
 
   const action = body.action as string | undefined
-  if (!action || !["approve", "edit_approve", "override", "send_back", "edit_send_back"].includes(action)) {
-    return NextResponse.json({ error: "action must be approve | edit_approve | override | send_back | edit_send_back" }, { status: 400 })
+  if (!action || !["approve", "edit_approve", "override", "send_back", "edit_send_back", "archive"].includes(action)) {
+    return NextResponse.json({ error: "action must be approve | edit_approve | override | send_back | edit_send_back | archive" }, { status: 400 })
   }
 
   // Load submission — include email for send_back notification
@@ -413,6 +413,22 @@ export async function POST(
       action: "edit_send_back",
       finalVerdict: "hold",
       editsLogged: editRows.length,
+    })
+  }
+
+  // ── archive ───────────────────────────────────────────────────────────────────
+  // Remove from AI queue without changing the submission's workflow status.
+  // The submission stays in HEAD_COACH_REVIEW for manual processing in Final Reviews.
+  if (action === "archive") {
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: { aiReviewStatus: "HUMAN_REVIEWED" },
+    })
+
+    return NextResponse.json({
+      submissionId,
+      action: "archive",
+      editsLogged: 0,
     })
   }
 
