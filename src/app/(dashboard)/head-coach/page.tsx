@@ -137,6 +137,8 @@ export default function HeadCoachDashboard() {
   const [triggerSubmissionId, setTriggerSubmissionId] = useState("")
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [triggerResult, setTriggerResult] = useState<string | null>(null)
+  const [sendBackId, setSendBackId] = useState<string | null>(null)
+  const [sendBackComment, setSendBackComment] = useState("")
 
   // Search / filter state
   const [reviewSearch, setReviewSearch] = useState("")
@@ -367,6 +369,9 @@ export default function HeadCoachDashboard() {
         body.finalVerdict = overrideVerdict
         body.overrideReason = overrideReason
       }
+      if ((action === "send_back" || action === "edit_send_back") && sendBackComment.trim()) {
+        body.headCoachComment = sendBackComment.trim()
+      }
       const res = await fetch(`/api/admin/ai-queue/${submissionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -391,6 +396,8 @@ export default function HeadCoachDashboard() {
         setEditedFields({})
         setOverrideId(null)
         setOverrideReason("")
+        setSendBackId(null)
+        setSendBackComment("")
         setExpandedQueueId(null)
       } else {
         const data = await res.json()
@@ -940,6 +947,7 @@ export default function HeadCoachDashboard() {
                 const isExpanded = expandedQueueId === item.id
                 const isEditing = editingQueueId === item.id
                 const isOverriding = overrideId === item.id
+                const isSendingBack = sendBackId === item.id
                 const isProcessing = processingQueueId === item.id
 
                 const verdictClass = triageVerdict === "proceed"
@@ -1114,6 +1122,49 @@ export default function HeadCoachDashboard() {
                         </div>
                       )}
 
+                      {/* Send-back comment panel */}
+                      {isSendingBack && (
+                        <div className="mt-4 border-t border-border pt-4 space-y-3">
+                          <p className="text-sm font-medium">Send Back to Student</p>
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">
+                              Add a note <span className="text-muted-foreground font-normal">(optional)</span>
+                            </Label>
+                            <Textarea
+                              placeholder="Add any personal note to the student alongside the AI feedback…"
+                              value={sendBackComment}
+                              onChange={(e) => setSendBackComment(e.target.value)}
+                              rows={3}
+                              className="resize-none"
+                              autoFocus
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              This will appear as a separate "Head Coach Feedback" section beneath the AI review.
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleQueueAction(item.id, "send_back")}
+                              disabled={isProcessing}
+                              size="sm"
+                              className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                              </svg>
+                              {isProcessing ? "Sending…" : "Confirm Send Back"}
+                            </Button>
+                            <Button
+                              onClick={() => { setSendBackId(null); setSendBackComment("") }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Override form */}
                       {isOverriding && (
                         <div className="mt-4 border-t border-border pt-4 space-y-3">
@@ -1157,10 +1208,22 @@ export default function HeadCoachDashboard() {
                       )}
 
                       {/* Action buttons */}
-                      {!isOverriding && (
+                      {!isOverriding && !isSendingBack && (
                         <div className="mt-4 flex flex-wrap gap-2">
                           {isEditing ? (
                             <>
+                              <div className="w-full space-y-1.5 mb-1">
+                                <Label className="text-sm font-medium">
+                                  Note to student with send back <span className="text-muted-foreground font-normal">(optional)</span>
+                                </Label>
+                                <Textarea
+                                  placeholder="Add a personal note alongside the edited AI feedback…"
+                                  value={sendBackComment}
+                                  onChange={(e) => setSendBackComment(e.target.value)}
+                                  rows={2}
+                                  className="resize-none text-sm"
+                                />
+                              </div>
                               <Button
                                 onClick={() => handleQueueAction(item.id, "edit_approve")}
                                 disabled={isProcessing}
@@ -1184,7 +1247,7 @@ export default function HeadCoachDashboard() {
                                 {isProcessing ? "Sending..." : "Save Edits + Send Back"}
                               </Button>
                               <Button
-                                onClick={() => { setEditingQueueId(null); setEditedFields({}) }}
+                                onClick={() => { setEditingQueueId(null); setEditedFields({}); setSendBackComment("") }}
                                 variant="outline"
                                 size="sm"
                               >
@@ -1205,7 +1268,11 @@ export default function HeadCoachDashboard() {
                                 {isProcessing ? "Approving..." : "Approve"}
                               </Button>
                               <Button
-                                onClick={() => handleQueueAction(item.id, "send_back")}
+                                onClick={() => {
+                                  setSendBackId(item.id)
+                                  setSendBackComment("")
+                                  setOverrideId(null)
+                                }}
                                 disabled={isProcessing}
                                 size="sm"
                                 className="bg-amber-600 hover:bg-amber-700 gap-1.5"
@@ -1213,7 +1280,7 @@ export default function HeadCoachDashboard() {
                                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                                 </svg>
-                                {isProcessing ? "Sending..." : "Send Back to Student"}
+                                Send Back to Student
                               </Button>
                               <Button
                                 onClick={() => {

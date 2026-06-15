@@ -309,6 +309,7 @@ export async function POST(
     const formattedFeedback = aiFeedback
       ? formatCoachFeedback(aiFeedback, weekNumber)
       : null
+    const headCoachComment = (body.headCoachComment as string | undefined)?.trim() || null
 
     await prisma.submission.update({
       where: { id: submissionId },
@@ -316,6 +317,7 @@ export async function POST(
         aiReviewStatus: "HUMAN_REVIEWED",
         status: "NEEDS_CORRECTION",
         coachFeedback: formattedFeedback,
+        headCoachFeedback: headCoachComment,
         headCoachId,
         headReviewedAt: new Date(),
         returnedByHeadCoach: true,
@@ -341,6 +343,7 @@ export async function POST(
   // ── edit_send_back ────────────────────────────────────────────────────────────
   // Edit the AI feedback, then send back to the student with NEEDS_CORRECTION.
   if (action === "edit_send_back") {
+    const headCoachComment = (body.headCoachComment as string | undefined)?.trim() || null
     const editedFieldsInput = body.editedFields as { fieldName: string; humanValue: string }[] | undefined
     if (!editedFieldsInput || !Array.isArray(editedFieldsInput)) {
       return NextResponse.json({ error: "editedFields array required for edit_send_back" }, { status: 400 })
@@ -381,6 +384,7 @@ export async function POST(
           status: "NEEDS_CORRECTION",
           aiFeedback: editedFeedback as unknown as Prisma.InputJsonValue,
           coachFeedback: formattedFeedback,
+          headCoachFeedback: headCoachComment,
           headCoachId,
           headReviewedAt: new Date(),
           returnedByHeadCoach: true,
