@@ -214,9 +214,9 @@ export function FeedbackRenderer({ text }: Props) {
     <div className="space-y-2.5">
       <div className="flex items-center gap-2 pb-1 border-b border-slate-200">
         <span className="inline-flex items-center rounded-md bg-violet-100 border border-violet-300 px-2.5 py-1 text-xs font-semibold text-violet-800 tracking-wide">
-          AI Review{weekNumber ? ` — Week ${weekNumber}` : ""}
+          Detailed Review from Head Coach{weekNumber ? ` — Week ${weekNumber}` : ""}
         </span>
-        <span className="text-xs text-slate-400">Reviewed by AI + Head Coach</span>
+        <span className="text-xs text-slate-400">Reviewed by Head Coach</span>
       </div>
       <div className="space-y-2">
         {blocks.map((block, i) => (
