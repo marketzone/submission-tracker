@@ -5,6 +5,7 @@ import { assembleLaunchInfo } from "./assembleLaunchInfo"
 import { lookupWeekCriteria, deriveReviewerStrategy } from "./weekCriteriaLookup"
 import { buildReviewPrompt } from "./buildReviewPrompt"
 import { RUBRIC_VERSION } from "./masterRubric"
+import { MANUAL_REVIEW_TITLES } from "@/lib/deliverables"
 import { Prisma, type WeekCriteria } from "@prisma/client"
 
 const REVIEW_MODEL = "claude-opus-4-7"
@@ -150,6 +151,16 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
     return makeHoldResult(submissionId, 0, `Submission ${submissionId} not found`)
   }
 
+  // Defensive guard: manual-review deliverables are marked HUMAN_REVIEWED at creation
+  // and should never reach this function. Return immediately if one does.
+  if (MANUAL_REVIEW_TITLES.has(submission.workbookTitle)) {
+    return makeHoldResult(
+      submissionId,
+      submission.weekNumber,
+      `"${submission.workbookTitle}" is a manual-review deliverable — AI pipeline does not apply`
+    )
+  }
+
   const weekNumber = submission.weekNumber
   const student = submission.student
 
@@ -216,7 +227,15 @@ export async function runAiReview(submissionId: string): Promise<AiReviewRunResu
   }
 
   // Filter to the patterns relevant for this file type (critical for Week 6)
-  const patternRows = filterPatternsForSubmission(allCriteriaRows, weekNumber, fileType)
+  let patternRows = filterPatternsForSubmission(allCriteriaRows, weekNumber, fileType)
+
+  // For new dropdown submissions: further narrow Week 6 sales-copy patterns to only the
+  // variants the student selected (stored as comma-separated IDs in workbookVariants).
+  if (weekNumber === 6 && submission.workbookVariants && fileType !== "slides") {
+    const selected = submission.workbookVariants.split(",").map((v) => v.trim()).filter(Boolean)
+    const filtered = patternRows.filter((r) => r.templateVariant && selected.includes(r.templateVariant))
+    if (filtered.length > 0) patternRows = filtered
+  }
 
   // ── 5. Load prior approved submissions (Week 6 sales copy + Week 7) ───────
   const isWeek6SalesCopy = weekNumber === 6 && fileType !== "slides"

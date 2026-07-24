@@ -92,6 +92,10 @@ model Submission {
   submittedAt           DateTime         @default(now())
   reviewedAt            DateTime?        // Coach manual review timestamp (existing)
   headReviewedAt        DateTime?
+  // Canonical variant selection for multi-variant deliverables (Week 6 Core-Offer Sales Page).
+  // Comma-separated templateVariant IDs, e.g. "long_form,desire_stack". Null for all other submissions.
+  workbookVariants      String?
+
   // AI review fields — parallel to manual review, never replaces it
   aiReviewStatus        AiReviewStatus   @default(PENDING)
   aiNicheAlignment      String?          // pass | drifting | off

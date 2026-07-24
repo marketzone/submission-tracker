@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sendEmail, emailTemplates } from "@/lib/email"
+import { MANUAL_REVIEW_TITLES } from "@/lib/deliverables"
 
 // GET /api/submissions - Fetch submissions based on user role
 export async function GET(request: Request) {
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Your account is deactivated. You cannot submit." }, { status: 403 })
     }
 
-    const { workbookTitle, workbookUrl, weekNumber, coachId, studentNote } =
+    const { workbookTitle, workbookUrl, weekNumber, coachId, studentNote, workbookVariants } =
       await request.json()
 
     const isLaunchClass = dbUser.studentClass === "LAUNCH_CLASS"
@@ -152,6 +153,11 @@ export async function POST(request: Request) {
       resolvedCoachId = coachId
     }
 
+    // Manual-review deliverables bypass the AI pipeline entirely.
+    // Setting aiReviewStatus = HUMAN_REVIEWED at creation prevents accidental
+    // AI triggering and keeps these submissions out of the AI queue.
+    const isManualReview = MANUAL_REVIEW_TITLES.has(workbookTitle)
+
     // Create submission
     const submission = await prisma.submission.create({
       data: {
@@ -163,6 +169,8 @@ export async function POST(request: Request) {
         headCoachId,
         status: isLaunchClass ? "HEAD_COACH_REVIEW" : "PENDING",
         studentNote: studentNote || null,
+        workbookVariants: workbookVariants || null,
+        ...(isManualReview ? { aiReviewStatus: "HUMAN_REVIEWED" } : {}),
       },
       include: {
         student: { select: { name: true, email: true } },
